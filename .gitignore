@@ -1,0 +1,6 @@
+*.txt
+/__pycache__
+/pl
+*.tmx
+*.db
+*.json
