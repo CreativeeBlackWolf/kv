@@ -1,5 +1,7 @@
 import xml.etree.cElementTree as ET
 import commands as com
+import events
+import random
 
 def move(plid, direction):
 	tree = ET.parse("session.tmx")
@@ -27,8 +29,29 @@ def move(plid, direction):
 						m.set('y', str(y))
 					print(f"{plid} moved: {oldcoords[0]}; {oldcoords[1]} -> {m.attrib['x']}; {m.attrib['y']}")
 	tree.write('session.tmx', 'UTF-8')
-	#tr = eventTrigger(plid)
-	return f"You moved {direction}"
+	tr = eventTrigger(plid)
+	return f"You moved {direction}\n\n{tr}"
+
+def eventTrigger(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	pos = com.getCoords(plid)
+	x = int(pos[0])
+	y = int(pos[1])
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Triggers":
+			for triggers in i:
+				if int(triggers.attrib['x']) == x and int(triggers.attrib['y']) == y:
+					trtype = triggers.attrib['type']
+					if trtype == "test":
+						i.remove(triggers)
+						tree.write('session.tmx', 'UTF-8')
+						return events.event_Test()
+
+	if random.randint(1, 100) >= 50:
+		return events.createEvent(plid)
+	else:
+		return "There's nothing here"
 
 if __name__ == '__main__':
 	print(move(409541670, "left"))
