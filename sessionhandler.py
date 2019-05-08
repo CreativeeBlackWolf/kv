@@ -1,7 +1,13 @@
 import xml.etree.cElementTree as ET
 import commands as com
+import vk_api
 import events
 import random
+
+with open('token.txt', 'r') as f:
+	token = f.read()
+vk_session = vk_api.VkApi(token=token)
+vk = vk_session.get_api()
 
 def move(plid, direction):
 	tree = ET.parse("session.tmx")
@@ -32,12 +38,34 @@ def move(plid, direction):
 	tr = eventTrigger(plid)
 	return f"You moved {direction}\n\n{tr}"
 
+def chat(plid, msg):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	pos = com.getCoords(plid)
+	msg = f"{' '.join(msg)}"
+	x = int(pos[0])
+	y = int(pos[1])
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Players":
+			for players in i:
+				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
+					vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)}: {msg}")
+
 def eventTrigger(plid):
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
 	pos = com.getCoords(plid)
 	x = int(pos[0])
 	y = int(pos[1])
+	text = ""
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Players":
+			for players in i:
+				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
+					if players.attrib['name'] != str(plid):
+						vk.messages.send(user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come")
+						text = "There's some players on this position"
+
 	for i in root.findall('objectgroup'):
 		if i.attrib['name'] == "Triggers":
 			for triggers in i:
@@ -46,12 +74,15 @@ def eventTrigger(plid):
 					if trtype == "test":
 						i.remove(triggers)
 						tree.write('session.tmx', 'UTF-8')
-						return events.event_Test()
+						text = text + f"\n{events.event_Test()}"
+						break
 
-	if random.randint(1, 100) >= 50:
-		return events.createEvent(plid)
-	else:
-		return "There's nothing here"
+	if not text:
+		if random.randint(1, 100) >= 90:
+			text = text + f"\n{events.createEvent(plid)}"
+		else:
+			text = "There's nothing here"
+	return text
 
 if __name__ == '__main__':
-	print(move(409541670, "left"))
+	pass

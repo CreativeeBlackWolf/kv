@@ -25,19 +25,21 @@ gamehelp = {
 	'enter': 'enter to the world! // !enter',
 	'move': 'move is some direction // !move (right, left, up, down)',
 	'leave': 'leave the session // !leave',
+	'tileplayers': 'see all players on your tile // !tileplayers',
+	'chat': 'chat with players on your tile // /chat (message)',
+	'save': 'save your position // !save'
 }
 
+with open('token.txt', 'r') as f:
+	token = f.read()
+vk_session = vk_api.VkApi(token=token)
+longpoll = VkLongPoll(vk_session)
+vk = vk_session.get_api()
+
 def main():
-	with open('token.txt', 'r') as f:
-		token = f.read()
+	upload = vk_api.VkUpload(vk_session)
 	with open('creator.txt', 'r') as c:
 		cid = int(c.read())
-	vk_session = vk_api.VkApi(token=token)
-	print('Authorise pass...')
-	longpoll = VkLongPoll(vk_session)
-	print('LongPool authorise pass...')
-	vk = vk_session.get_api()
-	upload = vk_api.VkUpload(vk_session)
 	if os.path.isfile('.rsttemp'):
 		with open('.rsttemp') as f:
 			uid = f.read()
@@ -71,7 +73,7 @@ def main():
 
 			if event.text.startswith('~shutdown'):
 				if event.user_id == cid:
-					vk.messages.send(user_id=uid, message='Shtting down...')
+					vk.messages.send(user_id=uid, message='Shutting down...')
 					raise SystemExit
 
 			if event.text.startswith('~restart'):
@@ -114,6 +116,35 @@ def main():
 				else:
 					vk.messages.send(userid=uid, message=comhelp['enter'])
 
+			if event.text.startswith("!move"):
+				if uid in ingame:
+					if len(split(event.text)) == 2:
+						direction = split(event.text)[1].lower()
+						if direction in ['right', 'left', 'up', 'down']:
+							vk.messages.send(user_id=uid, message=sh.move(uid, direction))
+						else:
+							vk.messages.send(user_id=uid, message="Wrong direction, enter one of the 'right', 'left', 'up', 'down'")
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("!tileplayers"):
+				if uid in ingame:
+					if len(split(event.text)) == 1:
+						vk.messages.send(user_id=uid, message=com.playersOnTile(uid))
+					else:
+						vk.messages.send(user_id=uid, message=gamehelp['tileplayers'])
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("/chat"):
+				if uid in ingame:
+					if len(event.text.split(" ")) == 1:
+						vk.messages.send(user_id=uid, message="You don't wrote the message")
+					else:
+						sh.chat(uid, event.text.split(" ")[1:])
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
 			if event.text.startswith('!leave'):
 				if len(split(event.text)) == 1:
 					if uid in ingame:
@@ -136,22 +167,12 @@ def main():
 				if event.user_id == cid:
 					if ingame:
 						for i in ingame:
-							ingame.remove(uid)
-							com.mapLeave(uid)
-							print(f"{vk.users.get(user_ids=uid)[0]['first_name']} был удалён из сессии")
+							ingame.remove(i)
+							com.mapLeave(i)
+							vk.messages.send(user_id=i, message="Your account has been forcibly removed from the session.")
+							vk.messages.send(user_id=uid, message=f"{vk.users.get(user_ids=i)[0]['first_name']} был удалён из сессии")
 					else:
 						vk.messages.send(user_id=uid, message='Никого в сессии нет, еблан')
-
-			if event.text.startswith("!move"):
-				if uid in ingame:
-					if len(split(event.text)) == 2:
-						direction = split(event.text)[1].lower()
-						if direction in ['right', 'left', 'up', 'down']:
-							vk.messages.send(user_id=uid, message=sh.move(uid, direction))
-						else:
-							vk.messages.send(user_id=uid, message="Wrong direction, enter one of the 'right', 'left', 'up', 'down'")
-				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
 
 			if event.text.startswith('~help'):
 				if len(split(event.text)) == 1:
@@ -184,7 +205,14 @@ enter: {gamehelp['enter']}
 
 move: {gamehelp['move']}
 
+tileplayers: {gamehelp['tileplayers']}
+
 leave: {gamehelp['leave']}
+
+save: {gamehelp['save']}
+
+Special commands (prefix "/"):
+chat: {gamehelp['chat']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(split(event.text)) == 2:

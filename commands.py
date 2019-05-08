@@ -1,7 +1,13 @@
 import xml.etree.cElementTree as ET
 import sqlite3
+import vk_api
 from utils import *
 import os
+
+with open('token.txt', 'r') as f:
+	token = f.read()
+vk_session = vk_api.VkApi(token=token)
+vk = vk_session.get_api()
 
 rulesofinternet = {
 	'1': "Do not talk about /b/",
@@ -90,7 +96,7 @@ def register(plid, fname, lname):
 	c.execute("INSERT INTO player VALUES (25, 25)")
 	player.commit()
 	player.close()
-	return f"Welcome to the gAmE, {fname}"
+	return f"Welcome to the game, {fname}"
 
 def delete(plid):
 	if not isExist(plid):
@@ -105,6 +111,47 @@ def delete(plid):
 	except FileNotFoundError:
 		print(f"db not found while deleting {plid}")
 	return "Account deleted. Seeya next time"
+
+def searchByID(id):
+	if not isExist(id):
+		return "User is not found"
+	data = sqlite3.connect("lop.db")
+	c = data.cursor()
+	c.execute("SELECT name FROM players WHERE id=?", [id])
+	name = c.fetchone()
+	data.close()
+	return name[0]
+
+def playersOnTile(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	pos = getCoords(plid)
+	x = int(pos[0])
+	y = int(pos[1])
+	tileplayers = []
+	
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Players":
+			for players in i:
+				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
+					tileplayers.append(players.attrib['name'])
+	
+	if not tileplayers:
+		return "There's no players on tile"
+	else:
+		message = "Players on tile:"
+		for i in tileplayers:
+			message = message + f"\n{searchByID(i)}"
+		return message
+
+def save(plid):
+	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
+	c = data.cursor()
+	pos = getCoords(plid)
+	c.execute("UPDATE player SET x_pos=?, y_pos=?" [pos[0], pos[1]])
+	data.commit()
+	data.close()
+	return "Position saved."
 
 def playertomap(plid):
 	pos = getCoords(plid)
@@ -154,3 +201,5 @@ def getCoords(plid):
 	st = stats(plid)
 	return st.x_pos, st.y_pos	
 
+if __name__ == '__main__':
+	pass
