@@ -13,6 +13,7 @@ def move(plid, direction):
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
 	oldcoords = com.getCoords(plid)
+	
 	for objects in root.findall('objectgroup'):
 		if objects.attrib['name'] == "Players":
 			for m in objects:
@@ -34,11 +35,19 @@ def move(plid, direction):
 						y = int(m.attrib['y']) + 1
 						m.set('y', str(y))
 					print(f"{plid} moved: {oldcoords[0]}; {oldcoords[1]} -> {m.attrib['x']}; {m.attrib['y']}")
+	
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Players":
+			for players in i:
+				if int(players.attrib['x']) == int(oldcoords[0]) and int(players.attrib['y']) == int(oldcoords[1]):
+					if players.attrib['name'] != plid:	
+						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} has left.")
+
 	tree.write('session.tmx', 'UTF-8')
 	tr = eventTrigger(plid)
 	return f"You moved {direction}\n\n{tr}"
 
-def chat(plid, msg):
+def chat(plid, msg, action=False):
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
 	pos = com.getCoords(plid)
@@ -49,7 +58,10 @@ def chat(plid, msg):
 		if i.attrib['name'] == "Players":
 			for players in i:
 				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
-					vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)}: {msg}")
+					if not action:
+						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)}: {msg}")
+					else:
+						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} {msg}")
 
 def eventTrigger(plid):
 	tree = ET.parse("session.tmx")

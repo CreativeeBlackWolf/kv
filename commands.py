@@ -89,11 +89,9 @@ def register(plid, fname, lname):
 
 	player = sqlite3.connect(os.path.join('pl', '{}.db'.format(plid)))
 	c = player.cursor()
-	c.execute("""
-				CREATE TABLE player (
-				x_pos INTEGER,
-				y_pos INTEGER)""")
+	c.execute("CREATE TABLE player (x_pos INTEGER, y_pos INTEGER)")
 	c.execute("INSERT INTO player VALUES (25, 25)")
+	c.execute("CREATE TABLE friends (id INTEGER, name TEXT, status INTEGER)")
 	player.commit()
 	player.close()
 	return f"Welcome to the game, {fname}"
@@ -111,6 +109,129 @@ def delete(plid):
 	except FileNotFoundError:
 		print(f"db not found while deleting {plid}")
 	return "Account deleted. Seeya next time"
+
+def addFriend(plid, fid):
+	if not isExist(plid):
+		return "Register first"
+	if not isExist(fid):
+		return "ID is not registered"
+	if plid == fid:
+		return "You have no friends?"
+	player = sqlite3.connect(os.path.join('pl', f'{plid}.db'))
+	c = player.cursor()
+	c.execute("SELECT * FROM friends WHERE id=?", [fid])
+	answer = c.fetchone()
+	if answer is None:
+		c.execute("INSERT INTO friends VALUES (?, ?, ?)", [fid, searchByID(fid), "Requested"])
+		player.commit()
+		player.close()
+		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+		c = friend.cursor()
+		c.execute("INSERT INTO friends VALUES (?, ?, ?)", [plid, searchByID(plid), "Request"])
+		vk.messages.send(user_id=fid, message=f"""{searchByID(plid)} sent a friend request.
+Enter "/addfriend {plid}" to accept it.
+Enter "/denyrequest {plid}" to deny it.""")
+		friend.commit()
+		friend.close()
+		return "Request sent"
+	if answer[2] == "Requested":
+		return "Request already sended"
+	if answer[2] == "Request":
+		c.execute("UPDATE friends SET status='Accepted' WHERE id=?", [fid])
+		player.commit()
+		player.close()
+		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+		c = friend.cursor()
+		c.execute("UPDATE friends SET status='Accepted' WHERE id=?", [plid])
+		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has accepted friend request")
+		friend.commit()
+		friend.close()
+		return "Request accepted"
+
+def removeFriend(plid, fid):
+	if not isExist(plid):
+		return "Register first"
+	if not isExist(fid):
+		return "User is not found"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM friends WHERE id=?", [fid])
+	if c.fetchone() is None:
+		return "User is not in your friends list"
+	c.execute("SELECT * FROM friends WHERE id=?", [fid])
+	ans = c.fetchone()
+	if ans[2] == "Accepted":
+		c.execute("DELETE FROM friends WHERE id=?", [fid])
+		data.commit()
+		data.close()
+		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+		c = friend.cursor()
+		c.execute("DELETE FROM friends WHERE id=?", [plid])
+		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has removed you from friend list. :c\nUse \"/addfriend {plid}\" to send friend request")
+		friend.commit()
+		friend.close()
+		return f"User has been removed from your friend list. \nUse \"/addfriend {fid}\" to send friend request"
+	else:
+		return "Please, use \"/denyrequest\" to cancel or deny friend request."
+
+def denyFriendRequest(plid, fid):
+	if not isExist(plid):
+		return "Register first"
+	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM friends WHERE id=?", [fid])
+	answer = c.fetchone()
+	if answer is None:
+		return "This user isn't sent a request"
+	if answer[2] == "Request":
+		c.execute("DELETE FROM friends WHERE id=?", [fid])
+		data.commit()
+		data.close()
+		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+		c = friend.cursor()
+		c.execute("DELETE FROM friends WHERE id=?", [plid])
+		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has denied friend request")
+		friend.commit()
+		friend.close()
+		return "Request denied"
+	if answer[2] == "Requested":
+		c.execute("DELETE FROM friends WHERE id=?", [fid])
+		data.commit()
+		data.close()
+		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+		c = friend.cursor()
+		c.execute("DELETE FROM friends WHERE id=?", [plid])
+		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has canceled friend request")
+		friend.commit()
+		friend.close()
+		return "Request canceled"
+	if answer[2] == "Accepted":
+		return "Request already accepted."
+
+def friendList(plid):
+	if not isExist(plid):
+		return "Register first"
+	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM friends WHERE status='Accepted'")
+	message = "Mutual friends:"
+	if c.fetchone() is None:
+		message = message + "\nYou don't have any friends ;c"
+	else:
+		c.execute("SELECT * FROM friends WHERE status='Accepted'")
+		friends = c.fetchall()
+		for f in friends:
+			message = message + f"\n{f[1]}"
+	c.execute("SELECT * FROM friends WHERE status='Requested'")
+	message = message + "\n\nAwaiting for answer:"
+	if c.fetchone() is None:
+		message = message + "\nNo requests sent"
+	else:
+		c.execute("SELECT * FROM friends WHERE status='Requested'")
+		awaiting = c.fetchall()
+		for a in awaiting:
+			message = message + f"\n{a[1]}"
+	return message
 
 def searchByID(id):
 	if not isExist(id):
@@ -162,7 +283,6 @@ def playertomap(plid):
 			ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
 	objects = root.findall('objectgroup/object')
 	for i in objects:
-		print(i.attrib)
 		if i.attrib['name'] == str(plid):
 			ET.SubElement(i, 'ellipse')
 	tree.write('session.tmx', 'UTF-8')
@@ -202,4 +322,4 @@ def getCoords(plid):
 	return st.x_pos, st.y_pos	
 
 if __name__ == '__main__':
-	pass
+	print(removeFriend(409541670, 195984907))

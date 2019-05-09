@@ -4,6 +4,7 @@ import sys
 import os
 import sessionhandler as sh
 from shlex import split
+from utils import inFriends
 import random
 import commands as com
 
@@ -18,7 +19,8 @@ comhelp = {
 	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
 	'getCoords': 'get your coords // ~getCoords',
 	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
-	'loli': 'catch the random loli // ~loli'
+	'socialhelp': 'help for social commands // ~socialhelp [command]',
+	'loli': 'catch the random loli // ~loli',
 }
 
 gamehelp = {
@@ -28,6 +30,16 @@ gamehelp = {
 	'tileplayers': 'see all players on your tile // !tileplayers',
 	'chat': 'chat with players on your tile // /chat (message)',
 	'save': 'save your position // !save'
+}
+
+sochelp = {
+	'chat': 'chat with players on your tile (ONLY in game) // /chat (message)',
+	'addfriend': 'send/accept friend request // /addfriend (ID)',
+	'denyrequest': 'deny/cancel friend request // /denyrequest (ID)',
+	'friendlist': 'your friend list // /friendlist',
+	'me': 'do something in chat (like hug someone) (ONLY in game) // /me (action(message))',
+	'pm': 'send private message to friend (ONLY in game) // /pm (friendID) (message)',
+	'removefriend': 'remove user from your friend list // /removefriend (friendID)'
 }
 
 with open('token.txt', 'r') as f:
@@ -78,6 +90,12 @@ def main():
 
 			if event.text.startswith('~restart'):
 				if event.user_id == cid:
+					if ingame:
+						for i in ingame:
+							ingame.remove(i)
+							com.mapLeave(i)
+							vk.messages.send(user_id=i, message="Your account has been forcibly removed from the session.")
+							vk.messages.send(user_id=uid, message=f"{vk.users.get(user_ids=i)[0]['first_name']} был удалён из сессии")
 					vk.messages.send(user_id=uid, message='Restarting bot...')
 					with open('.rsttemp', 'w') as f:
 						f.write(str(event.user_id))
@@ -136,14 +154,61 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message="Enter session first")
 
-			if event.text.startswith("/chat"):
+			if event.text.startswith("/pm"):
 				if uid in ingame:
-					if len(event.text.split(" ")) == 1:
-						vk.messages.send(user_id=uid, message="You don't wrote the message")
+					if len(event.text.split()) > 2:
+						if event.text.split()[1] not in ingame:
+							vk.messages.send(user_id=uid, message="User isn't in game")
+						else:
+							if inFriends(event.text.split()[1]):
+								vk.messages.send(user_id=event.text.split()[1], message=f"{com.searchByID(uid)}(PM): {event.text.split()[2:]}")
+								vk.messages.send(user_id=uid, message=f"{com.searchByID(uid)}(PM): {event.text.split()[2:]}")
 					else:
-						sh.chat(uid, event.text.split(" ")[1:])
+						vk.messages.send(user_id=uid, message=sochelp['pm'])
 				else:
 					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("/chat"):
+				if uid in ingame:
+					if len(event.text.split()) == 1:
+						vk.messages.send(user_id=uid, message="You don't wrote the message")
+					else:
+						sh.chat(uid, event.text.split()[1:], False)
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("/me"):
+				if uid in ingame:
+					if len(event.text.split()) == 1:
+						vk.messages.send(user_id=uid, message="You don't wrote the message")
+					else:
+						sh.chat(uid, event.text.split()[1:], True)
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("/addfriend"):
+				if len(split(event.text)) == 2:
+					vk.messages.send(user_id=uid, message=com.addFriend(uid, split(event.text)[1]))
+				else:
+					vk.messages.send(user_id=uid, message=sochelp['addfriend'])
+
+			if event.text.startswith("/denyrequest"):
+				if len(split(event.text)) == 2:
+					vk.messages.send(user_id=uid, message=com.denyFriendRequest(uid, split(event.text)[1]))
+				else:
+					vk.messages.send(user_id=uid, message=sochelp['denyrequest'])
+
+			if event.text.startswith("/friendlist"):
+				if len(split(event.text)) == 1:
+					vk.messages.send(user_id=uid, message=com.friendList(uid))
+				else:
+					vk.messages.send(user_id=uid, message=sochelp['friendlist'])
+
+			if event.text.startswith("/removefriend"):
+				if len(split(event.text)) == 2:
+					vk.messages.send(user_id=uid, message=com.removeFriend(uid, split(event.text)[1]))
+				else:
+					vk.messages.send(user_id=uid, message=sochelp['removefriend'])
 
 			if event.text.startswith('!leave'):
 				if len(split(event.text)) == 1:
@@ -176,7 +241,7 @@ def main():
 
 			if event.text.startswith('~help'):
 				if len(split(event.text)) == 1:
-					msg = f"""These commands have the prefix "~":
+					msg = f"""These commands have the prefix "~"
 help: {comhelp['help']}
 
 gamehelp: {comhelp['gamehelp']}
@@ -184,7 +249,7 @@ gamehelp: {comhelp['gamehelp']}
 ping: {comhelp['ping']}
 
 accRegister: {comhelp['accRegister']}
-|
+
 accDelete: {comhelp['accDelete']}
 
 ruleofinternet: {comhelp['ruleofinternet']}
@@ -210,16 +275,36 @@ tileplayers: {gamehelp['tileplayers']}
 leave: {gamehelp['leave']}
 
 save: {gamehelp['save']}
-
-Special commands (prefix "/"):
-chat: {gamehelp['chat']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(split(event.text)) == 2:
 					if split(event.text)[1] in gamehelp:
-						vk.messages.send(user_id = uid, message = gamehelp[split(event.text)[1]])
+						vk.messages.send(user_id=uid, message=gamehelp[split(event.text)[1]])
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~gamehelp")
+
+			if event.text.startswith("~socialhelp"):
+				if len(split(event.text)) == 1:
+					msg = f"""These commands have the prefix "/"
+chat: {sochelp['chat']}
+
+me: {sochelp['me']}
+
+addfriend: {sochelp['addfriend']}
+
+removefriend: {sochelp['removefriend']}
+
+denyrequest: {sochelp['denyrequest']}
+
+firendlist: {sochelp['friendList']}
+"""
+				if len(split(event.text)) == 2:
+					if split(event.text)[1] in sochelp:
+						vk.messages.send(user_id=uid, message=sochelp[split(event.text)[1]])
+					else:
+						vk.messages.send(user_id=uid, message="Command is not found. Try ~socialhelp")
+
+
 
 if __name__ == '__main__':
 	main()
