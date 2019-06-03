@@ -1,8 +1,9 @@
 import xml.etree.cElementTree as ET
+import events
 import commands as com
 import vk_api
-import events
 import random
+import gi
 
 with open('token.txt', 'r') as f:
 	token = f.read()
@@ -63,6 +64,23 @@ def chat(plid, msg, action=False):
 					else:
 						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} {msg}")
 
+def openChest(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	pos = com.getCoords(plid)
+	x = int(pos[0])
+	y = int(pos[1])
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Chests":
+			for chests in i:
+				if int(chests.attrib['x']) == x and int(chests.attrib['y']) == y:
+					item = gi.Item(plid)
+					i.remove(chests)
+					tree.write("session.tmx", "UTF-8")
+					return item.addItem()
+				else:
+					return "There're no chests here."
+
 def eventTrigger(plid):
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
@@ -76,7 +94,7 @@ def eventTrigger(plid):
 				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
 					if players.attrib['name'] != str(plid):
 						vk.messages.send(user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come")
-						text = "There's some players on this position"
+						text = "There're some players on this position"
 
 	for i in root.findall('objectgroup'):
 		if i.attrib['name'] == "Triggers":
@@ -89,9 +107,24 @@ def eventTrigger(plid):
 						text = text + f"\n{events.event_Test()}"
 						break
 
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Chests":
+			for chests in i:
+				if int(chests.attrib['x']) == x and int(chests.attrib['y']) == y:
+					chtype = chests.attrib['type']
+					if chtype == "ClosedStandart":
+						text = "Here is the Closed Standart chest"
+					elif chtype == "ClosedRare":
+						text = "Here is the Closed Rare chest"
+					elif chtype == "ClosedExclusive":
+						text = "Here is the Closed Exclusive chest"
+					else:
+						text = "Here is the Closed Absolute chest"
+					break
+
 	if not text:
-		if random.randint(1, 100) >= 90:
-			text = text + f"\n{events.createEvent(plid)}"
+		if random.randint(1, 100) >= 50:
+			text = text + f"\n{events.genChest(plid)}"
 		else:
 			text = "There's nothing here"
 	return text

@@ -18,6 +18,7 @@ comhelp = {
 	'accDelete': 'delete the account // ~accDelete',
 	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
 	'getCoords': 'get your coords // ~getCoords',
+	'showinv': 'see your inv. // ~showinv',
 	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
 	'socialhelp': 'help for social commands // ~socialhelp [command]',
 	'loli': 'catch the random loli // ~loli',
@@ -29,7 +30,8 @@ gamehelp = {
 	'leave': 'leave the session // !leave',
 	'tileplayers': 'see all players on your tile // !tileplayers',
 	'chat': 'chat with players on your tile // /chat (message)',
-	'save': 'save your position // !save'
+	'save': 'save your position // !save',
+	'open': 'open the chest if u\'re on it // !open'
 }
 
 sochelp = {
@@ -39,7 +41,8 @@ sochelp = {
 	'friendlist': 'your friend list // /friendlist',
 	'me': 'do something in chat (like hug someone) (ONLY in game) // /me (action(message))',
 	'pm': 'send private message to friend (ONLY in game) // /pm (friendID) (message)',
-	'removefriend': 'remove user from your friend list // /removefriend (friendID)'
+	'removefriend': 'remove user from your friend list // /removefriend (friendID)',
+	'sendmoney': 'send money to user // /sendmoney (userID) (count)'
 }
 
 with open('token.txt', 'r') as f:
@@ -78,7 +81,7 @@ def main():
 			"""
 
 			if event.text.startswith('~ping'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message='понг блядь')
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['pingS'])
@@ -102,29 +105,35 @@ def main():
 					os.execv(sys.executable, ['python'] + sys.argv)
 
 			if event.text.startswith('~ruleofinternet') or event.text.startswith('~rofi'):
-				if len(split(event.text)) == 2:
-					if split(event.text)[1] == 'random':
+				if len(event.text.split()) == 2:
+					if event.text.split()[1] == 'random':
 						randrule = str(random.randint(1, 49))
 						vk.messages.send(user_id=uid, message=com.rofi(randrule))
 					else:
-						vk.messages.send(user_id=uid, message=com.rofi(split(event.text)[1]))
+						vk.messages.send(user_id=uid, message=com.rofi(event.text.split()[1]))
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['ruleofinternet'])
 
 			if event.text.startswith('~accRegister'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.register(uid, userName, userLastName))
 				else:
 					vk.messages.send(user_id=uid, message=comhelp["accRegister"])
 
+			if event.text.startswith('~showinv'):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message=com.showInventory(uid))
+				else:
+					vk.messages.send(user_id=uid, message=comhelp["accRegister"])
+
 			if event.text.startswith('~accDelete'):
-				if len(split(event.text)) == 1:
+				if len(sevent.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.delete(uid))
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['accDelete'])
 
 			if event.text.startswith('!enter'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					if uid not in ingame:
 						ingame.append(uid)
 						com.playertomap(uid)
@@ -136,8 +145,8 @@ def main():
 
 			if event.text.startswith("!move"):
 				if uid in ingame:
-					if len(split(event.text)) == 2:
-						direction = split(event.text)[1].lower()
+					if len(event.text.split()) == 2:
+						direction = event.text.split()[1].lower()
 						if direction in ['right', 'left', 'up', 'down']:
 							vk.messages.send(user_id=uid, message=sh.move(uid, direction))
 						else:
@@ -145,9 +154,18 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message="Enter session first")
 
+			if event.text.startswith("!open"):
+				if uid in ingame:
+					if len(event.text.split()) == 1:
+						vk.messages.send(user_id=uid, message=sh.openChest(uid))
+					else:
+						vk.messages.send(user_id=uid, message=gamehelp['open'])
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
 			if event.text.startswith("!tileplayers"):
 				if uid in ingame:
-					if len(split(event.text)) == 1:
+					if len(event.text.split()) == 1:
 						vk.messages.send(user_id=uid, message=com.playersOnTile(uid))
 					else:
 						vk.messages.send(user_id=uid, message=gamehelp['tileplayers'])
@@ -157,16 +175,24 @@ def main():
 			if event.text.startswith("/pm"):
 				if uid in ingame:
 					if len(event.text.split()) > 2:
-						if event.text.split()[1] not in ingame:
+						if int(event.text.split()[1]) not in ingame:
 							vk.messages.send(user_id=uid, message="User isn't in game")
 						else:
-							if inFriends(event.text.split()[1]):
-								vk.messages.send(user_id=event.text.split()[1], message=f"{com.searchByID(uid)}(PM): {event.text.split()[2:]}")
+							if inFriends(uid, event.text.split()[1]):
+								vk.messages.send(user_id=event.text.split()[1], message=f"{com.searchByID(uid)}(PM): {' '.join(event.text.split()[2:])}")
 								vk.messages.send(user_id=uid, message=f"{com.searchByID(uid)}(PM): {event.text.split()[2:]}")
+							else:
+								vk.messages.send(user_id=uid, message="This user isn't in your friendlist")
 					else:
 						vk.messages.send(user_id=uid, message=sochelp['pm'])
 				else:
 					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("/sendmoney"):
+				if len(event.text.split()) == 3:
+					vk.messages.send(user_id=uid, message=com.sendMoney(uid, event.text.split()[1], event.text.split()[2]))
+				else:
+					vk.messages.send(user_id=uid, message=sochelp['sendmoney'])
 
 			if event.text.startswith("/chat"):
 				if uid in ingame:
@@ -187,31 +213,31 @@ def main():
 					vk.messages.send(user_id=uid, message="Enter session first")
 
 			if event.text.startswith("/addfriend"):
-				if len(split(event.text)) == 2:
-					vk.messages.send(user_id=uid, message=com.addFriend(uid, split(event.text)[1]))
+				if len(event.text.split()) == 2:
+					vk.messages.send(user_id=uid, message=com.addFriend(uid, event.text.split()[1]))
 				else:
 					vk.messages.send(user_id=uid, message=sochelp['addfriend'])
 
 			if event.text.startswith("/denyrequest"):
-				if len(split(event.text)) == 2:
-					vk.messages.send(user_id=uid, message=com.denyFriendRequest(uid, split(event.text)[1]))
+				if len(event.text.split()) == 2:
+					vk.messages.send(user_id=uid, message=com.denyFriendRequest(uid, event.text.split()[1]))
 				else:
 					vk.messages.send(user_id=uid, message=sochelp['denyrequest'])
 
 			if event.text.startswith("/friendlist"):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.friendList(uid))
 				else:
 					vk.messages.send(user_id=uid, message=sochelp['friendlist'])
 
 			if event.text.startswith("/removefriend"):
-				if len(split(event.text)) == 2:
-					vk.messages.send(user_id=uid, message=com.removeFriend(uid, split(event.text)[1]))
+				if len(event.text.split()) == 2:
+					vk.messages.send(user_id=uid, message=com.removeFriend(uid, event.text.split()[1]))
 				else:
 					vk.messages.send(user_id=uid, message=sochelp['removefriend'])
 
 			if event.text.startswith('!leave'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					if uid in ingame:
 						ingame.remove(uid)
 						com.mapLeave(uid)
@@ -221,8 +247,14 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['leave'])
 
+			if event.text.startswith("!save"):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message=com.save(uid))
+				else:
+					vk.messages.send(user_id=uid, message=gamehelp['save'])
+
 			if event.text.startswith('~getCoords'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					kurwa = com.getCoords(uid)
 					vk.messages.send(user_id=uid, message=f"U're on ({kurwa[0]}; {kurwa[1]})")
 				else:
@@ -240,7 +272,7 @@ def main():
 						vk.messages.send(user_id=uid, message='Никого в сессии нет, еблан')
 
 			if event.text.startswith('~help'):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "~"
 help: {comhelp['help']}
 
@@ -252,19 +284,21 @@ accRegister: {comhelp['accRegister']}
 
 accDelete: {comhelp['accDelete']}
 
+showinv: {comhelp['showinv']}
+
 ruleofinternet: {comhelp['ruleofinternet']}
 
 loli: {comhelp['loli']}
 """
 					vk.messages.send(user_id=uid, message=msg)
-				elif len(split(event.text)) == 2:
-					if split(event.text)[1] in comhelp:
-						vk.messages.send(user_id=uid, message=comhelp[split(event.text)[1]])
+				elif len(event.text.split()) == 2:
+					if event.text.split()[1] in comhelp:
+						vk.messages.send(user_id=uid, message=comhelp[event.text.split()[1]])
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~help")
 
 			if event.text.startswith("~gamehelp"):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "!"
 enter: {gamehelp['enter']}
 
@@ -275,16 +309,18 @@ tileplayers: {gamehelp['tileplayers']}
 leave: {gamehelp['leave']}
 
 save: {gamehelp['save']}
+
+open: {gamehelp['open']}
 """
 					vk.messages.send(user_id=uid, message=msg)
-				if len(split(event.text)) == 2:
-					if split(event.text)[1] in gamehelp:
-						vk.messages.send(user_id=uid, message=gamehelp[split(event.text)[1]])
+				if len(event.text.split()) == 2:
+					if event.text.split()[1] in gamehelp:
+						vk.messages.send(user_id=uid, message=gamehelp[event.text.split()[1]])
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~gamehelp")
 
 			if event.text.startswith("~socialhelp"):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "/"
 chat: {sochelp['chat']}
 
@@ -296,11 +332,14 @@ removefriend: {sochelp['removefriend']}
 
 denyrequest: {sochelp['denyrequest']}
 
-firendlist: {sochelp['friendList']}
+firendlist: {sochelp['friendlist']}
+
+sendmoney: {sochelp['sendmoney']}
 """
-				if len(split(event.text)) == 2:
-					if split(event.text)[1] in sochelp:
-						vk.messages.send(user_id=uid, message=sochelp[split(event.text)[1]])
+					vk.messages.send(user_id=uid, message=msg)
+				if len(event.text.split()) == 2:
+					if event.text.split()[1] in sochelp:
+						vk.messages.send(user_id=uid, message=sochelp[event.text.split()[1]])
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~socialhelp")
 

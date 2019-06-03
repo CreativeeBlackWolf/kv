@@ -69,6 +69,8 @@ class stats:
 		self.x_pos = int("{[0]}".format(c.fetchone()))
 		c.execute("SELECT y_pos FROM player")
 		self.y_pos = int("{[0]}".format(c.fetchone()))
+		c.execute("SELECT money FROM player")
+		self.money = int("{[0]}".format(c.fetchone()))
 
 
 def rofi(num):
@@ -89,9 +91,16 @@ def register(plid, fname, lname):
 
 	player = sqlite3.connect(os.path.join('pl', '{}.db'.format(plid)))
 	c = player.cursor()
-	c.execute("CREATE TABLE player (x_pos INTEGER, y_pos INTEGER)")
-	c.execute("INSERT INTO player VALUES (25, 25)")
+	c.execute("CREATE TABLE player (x_pos INTEGER, y_pos INTEGER, money INTEGER)")
+	c.execute("INSERT INTO player VALUES (25, 25, 127)")
 	c.execute("CREATE TABLE friends (id INTEGER, name TEXT, status INTEGER)")
+	c.execute("""CREATE TABLE inventory (number INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL,
+					desc TEXT NOT NULL,
+					type TEXT NOT NULL,
+					tier TEXT NOT NULL,
+					actions TEXT NOT NULL,
+					del BOOLEAN)""")
 	player.commit()
 	player.close()
 	return f"Welcome to the game, {fname}"
@@ -147,6 +156,42 @@ Enter "/denyrequest {plid}" to deny it.""")
 		friend.commit()
 		friend.close()
 		return "Request accepted"
+
+def showInventory(plid):
+	if not isExist(plid):
+		return "Register first"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM inventory ORDER BY number")
+	items = c.fetchall()
+	if not items:
+		return "You have no items in inventory"
+	message = ""
+	for i in items:
+		message += f"{i[0]}. {i[1]} // {i[2]}\n"
+	return message
+
+def sendMoney(plid, fid, count):
+	if not isExist(plid):
+		return "Register first"
+	if not isExist(fid):
+		return "User is not found"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	st = stats(plid)
+	if st.money < int(count):
+		return "Not enough money to send"
+	c.execute("UPDATE player SET money = money - ?", [count])
+	data.commit()
+	data.close()
+	pl = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+	c = pl.cursor()
+	c.execute("UPDATE player SET money = money + ?", [count])
+	pl.commit()
+	pl.close()
+	sender = vk.users.get(user_ids=plid, name_case="gen")[0]
+	vk.messages.send(user_id=fid, message=f"You got {count} credits from {sender['first_name']} {sender['last_name']}")
+	return "Your money were successfully sent to the player"
 
 def removeFriend(plid, fid):
 	if not isExist(plid):
@@ -221,7 +266,7 @@ def friendList(plid):
 		c.execute("SELECT * FROM friends WHERE status='Accepted'")
 		friends = c.fetchall()
 		for f in friends:
-			message = message + f"\n{f[1]}"
+			message = message + f"\n{f[1]} ({f[0]})"
 	c.execute("SELECT * FROM friends WHERE status='Requested'")
 	message = message + "\n\nAwaiting for answer:"
 	if c.fetchone() is None:
@@ -230,7 +275,7 @@ def friendList(plid):
 		c.execute("SELECT * FROM friends WHERE status='Requested'")
 		awaiting = c.fetchall()
 		for a in awaiting:
-			message = message + f"\n{a[1]}"
+			message = message + f"\n{a[1]} ({f[0]})"
 	return message
 
 def searchByID(id):
@@ -269,7 +314,7 @@ def save(plid):
 	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
 	c = data.cursor()
 	pos = getCoords(plid)
-	c.execute("UPDATE player SET x_pos=?, y_pos=?" [pos[0], pos[1]])
+	c.execute("UPDATE player SET x_pos=?, y_pos=?", [pos[0], pos[1]])
 	data.commit()
 	data.close()
 	return "Position saved."
@@ -322,4 +367,4 @@ def getCoords(plid):
 	return st.x_pos, st.y_pos	
 
 if __name__ == '__main__':
-	print(removeFriend(409541670, 195984907))
+	print(showInventory(409541670))
