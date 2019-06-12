@@ -1,5 +1,8 @@
 import xml.etree.cElementTree as ET
+import sqlite3
+import os
 import events
+import utils as ext
 import commands as com
 import vk_api
 import random
@@ -35,14 +38,14 @@ def move(plid, direction):
 					if direction == "down":
 						y = int(m.attrib['y']) + 1
 						m.set('y', str(y))
-					print(f"{plid} moved: {oldcoords[0]}; {oldcoords[1]} -> {m.attrib['x']}; {m.attrib['y']}")
+					print(f"{plid} moved: {oldcoords[0]};{oldcoords[1]} -> {m.attrib['x']};{m.attrib['y']}")
 	
 	for i in root.findall('objectgroup'):
 		if i.attrib['name'] == "Players":
 			for players in i:
 				if int(players.attrib['x']) == int(oldcoords[0]) and int(players.attrib['y']) == int(oldcoords[1]):
 					if players.attrib['name'] != plid:	
-						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} has left.")
+						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} has left from your square.")
 
 	tree.write('session.tmx', 'UTF-8')
 	tr = eventTrigger(plid)
@@ -75,11 +78,41 @@ def openChest(plid):
 			for chests in i:
 				if int(chests.attrib['x']) == x and int(chests.attrib['y']) == y:
 					item = gi.Item(plid)
-					i.remove(chests)
-					tree.write("session.tmx", "UTF-8")
-					return item.addItem()
-				else:
-					return "There're no chests here."
+					if chests.attrib['type'] == 'ClosedStandart':
+						i.remove(chests)
+						tree.write("session.tmx", "UTF-8")
+						return item.addItem("Common", "Uncommon")
+					if chests.attrib['type'] == 'ClosedRare':
+						i.remove(chests)
+						tree.write("session.tmx", "UTF-8")
+						return item.addItem("Uncommon", "Rare")
+					if chests.attrib['type'] == 'ClosedExclusive':
+						i.remove(chests)
+						tree.write("session.tmx", "UTF-8")
+						return item.addItem("Rare", "Exclusive")
+					if chests.attrib['type'] == 'ClosedAbsolute':
+						i.remove(chests)
+						tree.write("session.tmx", "UTF-8")
+						return item.addItem("Absolute")
+
+	return "There're no chests here"
+
+def itemAction(plid, itemNumber):
+	if not ext.inInventory(plid, itemNumber):
+		return "Wrong item number. Check your inventory again"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM inventory WHERE number=?", [itemNumber])
+	item = c.fetchone()
+	actions = item[5].split(" | ")
+	msg = ""
+	if item[6]:
+		msg += f"{item[1]} has been deleted from inventory\n"
+		c.execute("DELETE FROM inventory WHERE number=?", [itemNumber])
+		data.commit()
+	data.close()
+	msg += random.choice(actions)
+	return msg
 
 def eventTrigger(plid):
 	tree = ET.parse("session.tmx")
@@ -93,7 +126,7 @@ def eventTrigger(plid):
 			for players in i:
 				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
 					if players.attrib['name'] != str(plid):
-						vk.messages.send(user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come")
+						vk.messages.send(user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come.")
 						text = "There're some players on this position"
 
 	for i in root.findall('objectgroup'):
@@ -130,4 +163,4 @@ def eventTrigger(plid):
 	return text
 
 if __name__ == '__main__':
-	pass
+	print(itemAction(409541670, 4))

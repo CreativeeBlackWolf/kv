@@ -3,9 +3,9 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 import sys
 import os
 import sessionhandler as sh
-from shlex import split
-from utils import inFriends
+from utils import *
 import random
+import versions as ver
 import commands as com
 
 ingame = []
@@ -14,14 +14,16 @@ comhelp = {
 	'help': 'show the help message for command/to see commands list // ~help [command]',
 	'pingS': 'u can\'t write "~ping"?',
 	'ping': 'just ping the bot // ~ping',
-	'accRegister': 'enter the game // ~accRegister',
-	'accDelete': 'delete the account // ~accDelete',
+	'register': 'register the account // ~register',
+	'deleteacc': 'delete the account // ~deleteacc',
 	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
 	'getCoords': 'get your coords // ~getCoords',
 	'showinv': 'see your inv. // ~showinv',
 	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
 	'socialhelp': 'help for social commands // ~socialhelp [command]',
 	'loli': 'catch the random loli // ~loli',
+	'version': 'find out account version // ~version',
+	'upgrade': 'upgrate to latest account version // ~upgrade'
 }
 
 gamehelp = {
@@ -29,9 +31,9 @@ gamehelp = {
 	'move': 'move is some direction // !move (right, left, up, down)',
 	'leave': 'leave the session // !leave',
 	'tileplayers': 'see all players on your tile // !tileplayers',
-	'chat': 'chat with players on your tile // /chat (message)',
 	'save': 'save your position // !save',
-	'open': 'open the chest if u\'re on it // !open'
+	'open': 'open the chest if u\'re on it // !open',
+	'action': 'action w/ item in inventory // !action (item number in inv.)'
 }
 
 sochelp = {
@@ -42,7 +44,8 @@ sochelp = {
 	'me': 'do something in chat (like hug someone) (ONLY in game) // /me (action(message))',
 	'pm': 'send private message to friend (ONLY in game) // /pm (friendID) (message)',
 	'removefriend': 'remove user from your friend list // /removefriend (friendID)',
-	'sendmoney': 'send money to user // /sendmoney (userID) (count)'
+	'sendmoney': 'send money to user // /sendmoney (userID) (count)',
+	'sendgift': 'send gift to your friend // /sendgift (friendID) (item number in inventory) (message)'
 }
 
 with open('token.txt', 'r') as f:
@@ -69,7 +72,7 @@ def main():
 			userLastName = userData['last_name']
 
 			if event.text.startswith("~loli"):
-				if len(split(event.text)) == 1:
+				if len(event.text.split()) == 1:
 					photo = random.choice(os.listdir("E:\\lolies"))
 					onUpload = upload.photo_messages(photos="E:\\lolies\\" + photo)[0]
 					vk.messages.send(user_id=uid, message="here's your random loli", attachment=f"photo{onUpload['owner_id']}_{onUpload['id']}")
@@ -114,23 +117,35 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['ruleofinternet'])
 
-			if event.text.startswith('~accRegister'):
+			if event.text.startswith('~register'):
 				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.register(uid, userName, userLastName))
 				else:
-					vk.messages.send(user_id=uid, message=comhelp["accRegister"])
+					vk.messages.send(user_id=uid, message=comhelp["register"])
 
 			if event.text.startswith('~showinv'):
 				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.showInventory(uid))
 				else:
-					vk.messages.send(user_id=uid, message=comhelp["accRegister"])
+					vk.messages.send(user_id=uid, message=comhelp["showinv"])
 
-			if event.text.startswith('~accDelete'):
-				if len(sevent.text.split()) == 1:
+			if event.text.startswith('~deleteacc'):
+				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=com.delete(uid))
 				else:
-					vk.messages.send(user_id=uid, message=comhelp['accDelete'])
+					vk.messages.send(user_id=uid, message=comhelp['deleteacc'])
+
+			if event.text.startswith('~version'):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message=f"Account version: v.{checkVersion(uid)}\nLatest version: v.{ver.latestVersion}")
+				else:
+					vk.messages.send(user_id=uid, message=comhelp['version'])
+
+			if event.text.startswith('~upgrade'):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message=ver.upgradeToLatest(uid))
+				else:
+					vk.messages.send(user_id=uid, message=comhelp['upgrade'])
 
 			if event.text.startswith('!enter'):
 				if len(event.text.split()) == 1:
@@ -160,6 +175,15 @@ def main():
 						vk.messages.send(user_id=uid, message=sh.openChest(uid))
 					else:
 						vk.messages.send(user_id=uid, message=gamehelp['open'])
+				else:
+					vk.messages.send(user_id=uid, message="Enter session first")
+
+			if event.text.startswith("!action"):
+				if uid in ingame:
+					if len(event.text.split()) == 2:
+						vk.messages.send(user_id=uid, message=sh.itemAction(uid, event.text.split()[1]))
+					else:
+						vk.messages.send(user_id=uid, message=gamehelp['action'])
 				else:
 					vk.messages.send(user_id=uid, message="Enter session first")
 
@@ -193,6 +217,45 @@ def main():
 					vk.messages.send(user_id=uid, message=com.sendMoney(uid, event.text.split()[1], event.text.split()[2]))
 				else:
 					vk.messages.send(user_id=uid, message=sochelp['sendmoney'])
+
+			if event.text.startswith("/sendgift"):
+				if isExist(uid):
+					if checkVersion(uid) >= 51:
+						if len(event.text.split()) >= 3:
+							if checkVersion(event.text.split()[1]) >= 51:
+								vk.messages.send(user_id=uid, message=com.sendGift(uid, event.text.split()[1], event.text.split()[2], event.text.split()[3:]))
+							else:
+								vk.messages.send(user_id=uid, message="This account have version lower than 51 or not registered")
+						else:
+							vk.messages.send(user_id=uid, message=sochelp['sendgift'])
+					else:
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+				else:
+					vk.messages.send(user_id=uid, message="Register first")
+
+			if event.text.startswith("/acceptgift"):
+				if isExist(uid):
+					if checkVersion(uid) >= 51:
+						if len(event.text.split()) == 2:
+							vk.messages.send(user_id=uid, message=com.acceptGift(uid, event.text.split()[1]))
+						else:
+							vk.messages.send(user_id=uid, message=sochelp['acceptgift'])
+					else:
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+				else:
+					vk.messages.send(user_id=uid, message="Register first")
+
+			if event.text.startswith("/rejectgift"):
+				if isExist(uid):
+					if checkVersion(uid) >= 51:
+						if len(event.text.split()) == 2:
+							vk.messages.send(user_id=uid, message=com.rejectGift(uid, event.text.split()[1]))
+						else:
+							vk.messages.send(user_id=uid, message=sochelp['rejectgift'])
+					else:
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+				else:
+					vk.messages.send(user_id=uid, message="Register first")
 
 			if event.text.startswith("/chat"):
 				if uid in ingame:
@@ -280,9 +343,13 @@ gamehelp: {comhelp['gamehelp']}
 
 ping: {comhelp['ping']}
 
-accRegister: {comhelp['accRegister']}
+register: {comhelp['register']}
 
-accDelete: {comhelp['accDelete']}
+deleteacc: {comhelp['deleteacc']}
+
+version: {comhelp['version']}
+
+upgrade: {comhelp['upgrade']}
 
 showinv: {comhelp['showinv']}
 
@@ -311,6 +378,8 @@ leave: {gamehelp['leave']}
 save: {gamehelp['save']}
 
 open: {gamehelp['open']}
+
+action: {gamehelp['action']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(event.text.split()) == 2:
@@ -335,6 +404,8 @@ denyrequest: {sochelp['denyrequest']}
 firendlist: {sochelp['friendlist']}
 
 sendmoney: {sochelp['sendmoney']}
+
+sendgift: {sochelp['sendgift']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(event.text.split()) == 2:

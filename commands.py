@@ -2,6 +2,7 @@ import xml.etree.cElementTree as ET
 import sqlite3
 import vk_api
 from utils import *
+import versions
 import os
 
 with open('token.txt', 'r') as f:
@@ -85,7 +86,7 @@ def register(plid, fname, lname):
 	
 	data = sqlite3.connect("lop.db")
 	c = data.cursor()
-	c.execute("INSERT INTO players VALUES (?, ?)", [plid, f"{fname} {lname}"])
+	c.execute("INSERT INTO players VALUES (?, ?, ?)", [plid, f"{fname} {lname}", versions.latestVersion])
 	data.commit()
 	data.close()
 
@@ -100,7 +101,20 @@ def register(plid, fname, lname):
 					type TEXT NOT NULL,
 					tier TEXT NOT NULL,
 					actions TEXT NOT NULL,
-					del BOOLEAN)""")
+					del BOOLEAN NOT NULL,
+					inTrade BOOLEAN)""")
+	c.execute("""CREATE TABLE trades (tradeNumber INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+					tradeType TEXT NOT NULL,
+					tradeDesc TEXT NOT NULL,
+					tradeStatus TEXT NOT NULL,
+					name TEXT NOT NULL,
+					desc TEXT NOT NULL,
+					type TEXT NOT NULL,
+					tier TEXT NOT NULL,
+					actions TEXT NOT NULL,
+					del BOOLEAN NOT NULL,
+					senderID TEXT NOT NULL,
+					oiNum INTEGER NOT NULL)""")
 	player.commit()
 	player.close()
 	return f"Welcome to the game, {fname}"
@@ -124,7 +138,7 @@ def addFriend(plid, fid):
 		return "Register first"
 	if not isExist(fid):
 		return "ID is not registered"
-	if plid == fid:
+	if str(plid) == str(fid):
 		return "You have no friends?"
 	player = sqlite3.connect(os.path.join('pl', f'{plid}.db'))
 	c = player.cursor()
@@ -192,6 +206,84 @@ def sendMoney(plid, fid, count):
 	sender = vk.users.get(user_ids=plid, name_case="gen")[0]
 	vk.messages.send(user_id=fid, message=f"You got {count} credits from {sender['first_name']} {sender['last_name']}")
 	return "Your money were successfully sent to the player"
+
+def sendGift(plid, fid, itemNumber, message):
+	if not isExist(fid):
+		return "User is not found"
+	if not inFriends(plid, fid):
+		return "User isn't in your friend list"
+	if not inInventory(plid, itemNumber):
+		return "Item is not found"
+	if inTrade(plid, itemNumber):
+		return "This item is already in trade"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM inventory WHERE number=?", [itemNumber])
+	sItem = c.fetchone()
+	message = f"{' '.join(message)}"
+	sender = vk.users.get(user_ids=plid, name_case="gen")[0]
+	c.execute("""INSERT INTO trades (tradeType, tradeDesc, tradeStatus, name, desc, type, tier, actions, del, senderID, oiNum)
+				VALUES ("Gift", ?, "Sended", ?, ?, ?, ?, ?, ?, ?, ?)""", [f"Gift from {sender['first_name']} {sender['last_name']}: {message}",
+				sItem[1], sItem[2], sItem[3], sItem[4], sItem[5], sItem[6], plid, itemNumber])
+	c.execute("UPDATE inventory SET inTrade=1 WHERE number=?", [itemNumber])
+	data.commit()
+	data.close()
+	fdata = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
+	c = fdata.cursor()
+	c.execute("""INSERT INTO trades (tradeType, tradeDesc, tradeStatus, name, desc, type, tier, actions, del, senderID, oiNum)
+				VALUES ("Gift", ?, "Awaiting", ?, ?, ?, ?, ?, ?, ?, ?)""", [f"Gift from {sender['first_name']} {sender['last_name']}: {message}",
+				sItem[1], sItem[2], sItem[3], sItem[4], sItem[5], sItem[6], plid, itemNumber])
+	c.execute("SELECT tradeNumber FROM trades ORDER BY tradeNumber DESC LIMIT 1")
+	tradeNum = c.fetchone()[0]
+	fdata.commit()
+	fdata.close()
+	vk.messages.send(user_id=fid, message=f"""You got a Gift from {sender['first_name']} {sender['last_name']} with message: {message}
+Enter /acceptGift {tradeNum} to accept it
+Or enter /rejectGift {tradeNum} to reject it""")
+	return "Trade request sended."
+
+def acceptGift(plid, tradeNumber):
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM trades WHERE tradeNumber=?", [tradeNumber])
+	item = c.fetchone()
+	if item is None:
+		return "Trade request isn't found"
+	c.execute("INSERT INTO inventory (name, desc, type, tier, actions, del, inTrade) VALUES (?, ?, ?, ?, ?, ?, 0)", [item[4], item[5], item[6], item[7], item[8], item[9]])
+	c.execute("UPDATE trades SET tradeStatus='Accepted' WHERE tradeNumber=?", [tradeNumber])
+	data.commit()
+	data.close()
+	fdata = sqlite3.connect(os.path.join("pl", f"{item[10]}.db"))
+	c = fdata.cursor()
+	c.execute("DELETE FROM inventory WHERE number=?", [item[11]])
+	c.execute("UPDATE trades SET tradeStatus='Accepted' WHERE oiNum=?", [item[11]])
+	c.execute("SELECT tradeNumber FROM trades WHERE oiNum=?", [item[11]])
+	tr = c.fetchone()[0]
+	fdata.commit()
+	fdata.close()
+	vk.messages.send(user_id=item[10], message=f"Your gift (trade№: {tr}) was accepted")
+	return "Gift accepted and added to your inventory"
+
+def rejectGift(plid, tradeNumber):
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM trades WHERE tradeNumber=?", [tradeNumber])
+	tr = c.fetchone()
+	if tr is None:
+		return "Trade request isn't found"
+	c.execute("UPDATE trades SET tradeStatus='Rejected' WHERE tradeNumber=?", [tradeNumber])
+	data.commit()
+	data.close()
+	fdata = sqlite3.connect(os.path.join("pl", f"{tr[10]}.db"))
+	c = fdata.cursor()
+	c.execute("UPDATE trades SET tradeStatus='Rejected' WHERE oiNum=?", [tr[11]])
+	c.execute("UPDATE inventory SET inTrade=0 WHERE number=?", [tr[11]])
+	c.execute("SELECT tradeNumber FROM trades WHERE oiNum=?", [tr[11]])
+	tr = c.fetchone()[0]
+	fdata.commit()
+	fdata.close()
+	vk.messages.send(user_id=tr[10], message=f"Your gift (trade№: {tr}) was accepted")
+	return "Gift rejected"
 
 def removeFriend(plid, fid):
 	if not isExist(plid):
@@ -367,4 +459,5 @@ def getCoords(plid):
 	return st.x_pos, st.y_pos	
 
 if __name__ == '__main__':
-	print(showInventory(409541670))
+	pass
+
