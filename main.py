@@ -7,6 +7,7 @@ from utils import *
 import random
 import versions as ver
 import commands as com
+from importlib import reload
 
 ingame = []
 
@@ -19,6 +20,7 @@ comhelp = {
 	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
 	'getCoords': 'get your coords // ~getCoords',
 	'showinv': 'see your inv. // ~showinv',
+	'tradeinv': 'see your trade inv. // ~tradeinv',
 	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
 	'socialhelp': 'help for social commands // ~socialhelp [command]',
 	'loli': 'catch the random loli // ~loli',
@@ -33,7 +35,8 @@ gamehelp = {
 	'tileplayers': 'see all players on your tile // !tileplayers',
 	'save': 'save your position // !save',
 	'open': 'open the chest if u\'re on it // !open',
-	'action': 'action w/ item in inventory // !action (item number in inv.)'
+	'action': 'action w/ item in inventory // !action (item number in inv.)',
+	'itemlist': 'check the item list in the shop // !itemlist'
 }
 
 sochelp = {
@@ -107,6 +110,22 @@ def main():
 						f.write(str(event.user_id))
 					os.execv(sys.executable, ['python'] + sys.argv)
 
+			if event.text.startswith('~reload'):
+				if event.user_id == cid:
+					if len(event.text.split()) == 2:
+						if event.text.split()[1] in ["sh", "com", "ver", "utils"]:
+							if event.text.split()[1] == "sh":
+								reload(sh)
+							if event.text.split()[1] == "com":
+								reload(com)
+							if event.text.split()[1] == "ver":
+								reload(ver)
+							if event.text.split()[1] == "utils":
+								reload(utils)
+							vk.messages.send(user_id=uid, message=f"Module \"{event.text.split()[1]}\" reloaded")
+					else:
+						vk.messages.send(user_id=uid, message="~reload (module)")
+
 			if event.text.startswith('~ruleofinternet') or event.text.startswith('~rofi'):
 				if len(event.text.split()) == 2:
 					if event.text.split()[1] == 'random':
@@ -151,7 +170,7 @@ def main():
 				if len(event.text.split()) == 1:
 					if uid not in ingame:
 						ingame.append(uid)
-						com.playertomap(uid)
+						com.playerToMap(uid)
 						vk.messages.send(user_id=uid, message="Account is now in session")
 					else:
 						vk.messages.send(user_id=uid, message="U're already in session")
@@ -167,7 +186,7 @@ def main():
 						else:
 							vk.messages.send(user_id=uid, message="Wrong direction, enter one of the 'right', 'left', 'up', 'down'")
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("!open"):
 				if uid in ingame:
@@ -176,7 +195,7 @@ def main():
 					else:
 						vk.messages.send(user_id=uid, message=gamehelp['open'])
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("!action"):
 				if uid in ingame:
@@ -185,7 +204,31 @@ def main():
 					else:
 						vk.messages.send(user_id=uid, message=gamehelp['action'])
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
+
+			if event.text.startswith("!itemlist"):
+				if uid in ingame:
+					if len(event.text.split()) == 1:
+						vk.messages.send(user_id=uid, message=com.showShopList(uid))
+					else:
+						vk.messages.send(user_id=uid, message=gamehelp['itemlist'])
+				else:
+					vk.messages.send(user_id=uid, message="You must be in session")
+
+			if event.text.startswith("!buy"):
+				if uid in ingame:
+					if len(event.text.split()) == 2:
+						vk.messages.send(user_id=uid, message=com.buyItem(uid, event.text.split()[1]))
+					else:
+						vk.messages.send(user_id=uid, message=gamehelp['buy'])
+				else:
+					vk.messages.send(user_id=uid, message="You must be in session")
+
+			if event.text.startswith("~tradeinv"):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message=com.showTradeInventory(uid))
+				else:
+					vk.messages.send(user_id=uid, message=comhelp['tradeinv'])
 
 			if event.text.startswith("!tileplayers"):
 				if uid in ingame:
@@ -194,7 +237,7 @@ def main():
 					else:
 						vk.messages.send(user_id=uid, message=gamehelp['tileplayers'])
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("/pm"):
 				if uid in ingame:
@@ -210,7 +253,7 @@ def main():
 					else:
 						vk.messages.send(user_id=uid, message=sochelp['pm'])
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("/sendmoney"):
 				if len(event.text.split()) == 3:
@@ -264,7 +307,7 @@ def main():
 					else:
 						sh.chat(uid, event.text.split()[1:], False)
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("/me"):
 				if uid in ingame:
@@ -273,7 +316,7 @@ def main():
 					else:
 						sh.chat(uid, event.text.split()[1:], True)
 				else:
-					vk.messages.send(user_id=uid, message="Enter session first")
+					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("/addfriend"):
 				if len(event.text.split()) == 2:
@@ -353,6 +396,8 @@ upgrade: {comhelp['upgrade']}
 
 showinv: {comhelp['showinv']}
 
+tradeinv: {comhelp['tradeinv']}
+
 ruleofinternet: {comhelp['ruleofinternet']}
 
 loli: {comhelp['loli']}
@@ -380,6 +425,8 @@ save: {gamehelp['save']}
 open: {gamehelp['open']}
 
 action: {gamehelp['action']}
+
+itemlist: {gamehelp['itemlist']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(event.text.split()) == 2:

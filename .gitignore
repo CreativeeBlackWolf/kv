@@ -4,3 +4,4 @@
 *.tmx
 *.db
 *.json
+/npc

@@ -155,9 +155,22 @@ def eventTrigger(plid):
 						text = "Here is the Closed Absolute chest"
 					break
 
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "Merchants":
+			for m in i:
+				if int(m.attrib['x']) == x and int(m.attrib['y']) == y:
+					text = "Here is the Merchant"
+					break
+
 	if not text:
 		if random.randint(1, 100) >= 50:
-			text = text + f"\n{events.genChest(plid)}"
+			ev = random.randint(1, 3)
+			if ev == 1:
+				text += f"\n{events.createEvent(plid)}"
+			if ev == 2:
+				text += f"\n{events.genChest(plid)}"
+			if ev == 3:
+				text += f"\n{events.spawnMerchant(plid)}"
 		else:
 			text = "There's nothing here"
 	return text

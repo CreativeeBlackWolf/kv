@@ -1,6 +1,9 @@
 import commands as com
 import xml.etree.cElementTree as ET
 import random
+import os
+import gi
+import sqlite3
 
 events = ["test"]
 
@@ -16,6 +19,37 @@ def createEvent(plid):
 				text = event_Test()
 	tree.write('session.tmx', 'UTF-8')
 	return text
+
+def spawnMerchant(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	coords = com.getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	for i in root.findall("objectgroup"):
+		if i.attrib['name'] == "Merchants":
+			ET.SubElement(i, "object", {"name": "Merchant", "type": "uncheckedMerchant", "x": x, "y": y, "width": '1', 'height': '1'})
+			data = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
+			c = data.cursor()
+			c.execute("""CREATE TABLE inventory (number INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL,
+					desc TEXT NOT NULL,
+					type TEXT NOT NULL,
+					tier TEXT NOT NULL,
+					actions TEXT NOT NULL,
+					del BOOLEAN NOT NULL,
+					price INTEGER NOT NULL)""")
+			c.execute("CREATE TABLE spList (name TEXT NOT NULL, price INTEGER NOT NULL)")
+			data.commit()			
+			data.close()
+			gen = gi.Item(plid)
+			for i in range(random.randint(3, 7)):
+				gen.addMerchantItem([x, y], "Common", "Uncommon", "Rare")
+			tree.write("session.tmx", "UTF-8")
+			return "Here is the Merchant"
+
+def fillMerchant(plid):
+	pass
 
 def genChest(plid):
 	chest = random.randint(0, 100)
@@ -44,3 +78,5 @@ def genChest(plid):
 def event_Test():
 	return "пiпався"
 
+if __name__ == "__main__":
+	print(spawnMerchant(409541670))

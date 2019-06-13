@@ -4,7 +4,7 @@ import xml.etree.cElementTree as ET
 def main():
 	while True:
 		try:
-			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n9. Выход\n>>>"))
+			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n9. Выход\n>>>"))
 		except:
 			continue
 		if not a:
@@ -127,21 +127,22 @@ def main():
 					print("Неверно введены координаты")
 					continue
 				for objects in root.findall('objectgroup'):
-					for i in objects:
-						if int(i.attrib['x']) == x and int(i.attrib['y']) == y:
-							ans = input(f"Вы уверены, что хотите удалить {i.attrib['name']}//{i.attrib['type']}? ")
-							if ans in ["да", "yes", "y", "д", "пизда"]:
-								objects.remove(i)
-								tree.write("session.tmx", "UTF-8")
-								print("Объект успешно удалён")
-								break
-							else:
-								print("Удаление отменено")
-								break
+					if objects.attrib['name'] != "Players":
+						for i in objects:
+							if int(i.attrib['x']) == x and int(i.attrib['y']) == y:
+								ans = input(f"Вы уверены, что хотите удалить {i.attrib['name']}//{i.attrib['type']}? ")
+								if ans in ["да", "yes", "y", "д", "пизда"]:
+									objects.remove(i)
+									tree.write("session.tmx", "UTF-8")
+									print("Объект успешно удалён")
+									break
+								else:
+									print("Удаление отменено")
+									break
 		elif a == 3:
 			while True:
 				try:
-					t = int(input("\nОбъекты:\n1. Игроки\n2. Триггеры\n3. Сундуки\n9. Выход\n>>>"))
+					t = int(input("\nОбъекты:\n1. Игроки\n2. Триггеры\n3. Сундуки\n4. Торговцы\n5. Всё\n9. Выход\n>>>"))
 				except:
 					continue
 				if t == 1:
@@ -154,7 +155,6 @@ def main():
 						print("Игроков на карте не обнаружено")
 					else:
 						print("\n".join(players))
-						
 				if t == 2:
 					triggers = []
 					for objects in root.findall('objectgroup'):
@@ -175,8 +175,34 @@ def main():
 						print("Сундуков на карте не обнаружено")
 					else:
 						print("\n".join(chests))
+				if t == 4:
+					merchants = []
+					for objects in root.findall('objectgroup'):
+						if objects.attrib['name'] == "Chests":
+							for mr in enumerate(objects):
+								merchants.append(f"{mr[0]+1}. {mr[1].attrib['name']}/{mr[1].attrib['type']}: {mr[1].attrib['x']};{mr[1].attrib['y']}")
+					if not merchants:
+						print("Торговцев на карте не обнаружено")
+					else:
+						print("\n".join(merchants))
+				if t == 5:
+					ev = []
+					for objects in root.findall('objectgroup'):
+						for i in enumerate(objects):
+							ev.append(f"-- {i[1].attrib['name']}/{i[1].attrib['type']}: {i[1].attrib['x']};{i[1].attrib['y']}")
+					if not ev:
+						print("Ничего на карте не обнаружено")
+					else:
+						print("\n".join(ev))
 				if t == 9:
 					break
+		elif a == 4:
+			for objects in root.findall('objectgroup'):
+				if objects.attrib['name'] == "Players":
+					for pl in objects:
+						objects.remove(pl)
+			tree.write("session.tmx", "UTF-8")
+			print("Объекты игроков удалены с карты")
 		elif a == 9:
 			break
 

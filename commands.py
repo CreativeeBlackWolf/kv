@@ -185,6 +185,20 @@ def showInventory(plid):
 		message += f"{i[0]}. {i[1]} // {i[2]}\n"
 	return message
 
+def showTradeInventory(plid):
+	if not isExist(plid):
+		return "Register first"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM trades ORDER BY tradeNumber")
+	trades = c.fetchall()
+	if not trades:
+		return "You have no trades"
+	msg = ""
+	for i in trades:
+		msg += f"{i[0]}. Type: {i[1]}, Status: {i[3]}\nItem: {i[4]}\nDescription: {i[2]}\n\n"
+	return msg
+
 def sendMoney(plid, fid, count):
 	if not isExist(plid):
 		return "Register first"
@@ -222,8 +236,9 @@ def sendGift(plid, fid, itemNumber, message):
 	sItem = c.fetchone()
 	message = f"{' '.join(message)}"
 	sender = vk.users.get(user_ids=plid, name_case="gen")[0]
+	receiver = vk.users.get(user_ids=fid, name_case="dat")[0]
 	c.execute("""INSERT INTO trades (tradeType, tradeDesc, tradeStatus, name, desc, type, tier, actions, del, senderID, oiNum)
-				VALUES ("Gift", ?, "Sended", ?, ?, ?, ?, ?, ?, ?, ?)""", [f"Gift from {sender['first_name']} {sender['last_name']}: {message}",
+				VALUES ("Gift", ?, "Sended", ?, ?, ?, ?, ?, ?, ?, ?)""", [f"Gift to {receiver['first_name']} {receiver['last_name']}: {message}",
 				sItem[1], sItem[2], sItem[3], sItem[4], sItem[5], sItem[6], plid, itemNumber])
 	c.execute("UPDATE inventory SET inTrade=1 WHERE number=?", [itemNumber])
 	data.commit()
@@ -284,6 +299,56 @@ def rejectGift(plid, tradeNumber):
 	fdata.close()
 	vk.messages.send(user_id=tr[10], message=f"Your gift (trade№: {tr}) was accepted")
 	return "Gift rejected"
+
+def showShopList(plid):
+	coords = getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	if not os.path.exists(os.path.join("npc", f"merchant-{x}{y}.db" )):
+		return "Here's no merchant on this square"
+	data = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
+	c = data.cursor()
+	c.execute("SELECT * FROM inventory")
+	if c.fetchone() is None:
+		return "Merchant has no items in inventory. Check him a bit later"
+	it = c.fetchall()
+	msg = "Merchant shop list:\n"
+	for i in it:
+		msg += f"{i[0]}. {i[1]} // Price: {i[7]}\n"
+	data.close()
+	return msg
+
+def buyItem(plid, itemNumber):
+	coords = getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	if not os.path.exists(os.path.join("npc", f"merchant-{x}{y}.db" )):
+		return "Here's no merchant on this square"
+	st = stats(plid)
+	data = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
+	c = data.cursor()
+	c.execute("SELECT price FROM inventory WHERE number=?", [itemNumber])
+	if c.fetchone() is None:
+		return "Wrong item number."
+	c.execute("SELECT price FROM inventory WHERE number=?", [itemNumber])
+	price = int(c.fetchone()[0])
+	if st.money < price:
+		return "You can't buy this item"
+	c.execute("SELECT * FROM inventory WHERE number=?", [itemNumber])
+	item = c.fetchone()
+	c.execute("DELETE FROM inventory WHERE number=?", [itemNumber])
+	pldata = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = pldata.cursor()
+	c.execute("INSERT INTO inventory (name, desc, type, tier, actions, del, inTrade) VALUES (?, ?, ?, ?, ?, ?, 0)",
+				[item[1], item[2], item[3], item[4], item[5], item[6]])
+	c.execute("""INSERT INTO trades (tradeType, tradeDesc, tradeStatus, name, desc, type, tier, actions, del, senderID, oiNum)
+				VALUES ("Purchase", ?, "Done", ?, ?, ?, ?, ?, ?, ?, ?)""",
+				[f"Purchase for {price} riphs", item[1], item[2], item[3], item[4], item[5], item[6], f"merchant-{x}{y}", item[0]])
+	data.commit()
+	data.close()
+	pldata.commit()
+	pldata.close()
+	return "Item bought"
 
 def removeFriend(plid, fid):
 	if not isExist(plid):
@@ -411,13 +476,13 @@ def save(plid):
 	data.close()
 	return "Position saved."
 
-def playertomap(plid):
+def playerToMap(plid):
 	pos = getCoords(plid)
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
 	for i in root.findall('objectgroup'):
 		if i.attrib['name'] == 'Players':
-			ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
+			ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'type': 'Player', 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
 	objects = root.findall('objectgroup/object')
 	for i in objects:
 		if i.attrib['name'] == str(plid):
@@ -425,10 +490,6 @@ def playertomap(plid):
 	tree.write('session.tmx', 'UTF-8')
 
 def mapLeave(plid):
-	'''
-	Deleting players from the map
-	player.mapLeave(message.author.id)
-	'''
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
 	data = sqlite3.connect(os.path.join('pl', '{}.db'.format(plid)))
