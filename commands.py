@@ -311,6 +311,7 @@ def showShopList(plid):
 	c.execute("SELECT * FROM inventory")
 	if c.fetchone() is None:
 		return "Merchant has no items in inventory. Check him a bit later"
+	c.execute("SELECT * FROM inventory")
 	it = c.fetchall()
 	msg = "Merchant shop list:\n"
 	for i in it:
@@ -353,7 +354,7 @@ def buyItem(plid, itemNumber):
 def removeFriend(plid, fid):
 	if not isExist(plid):
 		return "Register first"
-	if not isExist(fid):
+	if not isExist(fid) and str(fid) != "???":
 		return "User is not found"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -363,6 +364,9 @@ def removeFriend(plid, fid):
 	c.execute("SELECT * FROM friends WHERE id=?", [fid])
 	ans = c.fetchone()
 	if ans[2] == "Accepted":
+		c.execute("SELECT name FROM friends WHERE id=?", [fid])
+		if c.fetchone()[0] == "Cassette":
+			return "You can't remove this cute thing from friend list"
 		c.execute("DELETE FROM friends WHERE id=?", [fid])
 		data.commit()
 		data.close()
@@ -418,21 +422,30 @@ def friendList(plid):
 	c.execute("SELECT * FROM friends WHERE status='Accepted'")
 	message = "Mutual friends:"
 	if c.fetchone() is None:
-		message = message + "\nYou don't have any friends ;c"
+		message += "\nYou don't have any friends ;c"
 	else:
 		c.execute("SELECT * FROM friends WHERE status='Accepted'")
 		friends = c.fetchall()
 		for f in friends:
-			message = message + f"\n{f[1]} ({f[0]})"
+			message += f"\n{f[1]} ({f[0]})"
 	c.execute("SELECT * FROM friends WHERE status='Requested'")
-	message = message + "\n\nAwaiting for answer:"
+	message += "\n\nPending acceptance/rejection:"
 	if c.fetchone() is None:
-		message = message + "\nNo requests sent"
+		message += "\nNo requests sent"
 	else:
 		c.execute("SELECT * FROM friends WHERE status='Requested'")
 		awaiting = c.fetchall()
 		for a in awaiting:
-			message = message + f"\n{a[1]} ({f[0]})"
+			message += f"\n{a[1]} ({a[0]})"
+	c.execute("SELECT * FROM friends WHERE status='Request'")
+	message += "\n\nPending for reply:"
+	if c.fetchone() is None:
+		message += "\nNo requests sent"
+	else:
+		c.execute("SELECT * FROM friends WHERE status='Request'")
+		repl = c.fetchall()
+		for r in repl:
+			message += f"\n{r[1]} ({r[0]})"
 	return message
 
 def searchByID(id):
@@ -520,5 +533,5 @@ def getCoords(plid):
 	return st.x_pos, st.y_pos	
 
 if __name__ == '__main__':
-	pass
+	print(friendList(409541670))
 

@@ -110,8 +110,16 @@ def itemAction(plid, itemNumber):
 		msg += f"{item[1]} has been deleted from inventory\n"
 		c.execute("DELETE FROM inventory WHERE number=?", [itemNumber])
 		data.commit()
-	data.close()
 	msg += random.choice(actions)
+	if item[1] == "Cassette" and msg.startswith('These two holes remind you of eyes'):
+		c.execute("SELECT * FROM friends WHERE name='Cassette'")
+		if c.fetchone() is None:
+			msg += "\n\nCassette was added to your friend list"
+			c.execute("INSERT INTO friends VALUES ('???', 'Cassette', 'Accepted')")
+			data.commit()
+		else:
+			pass
+	data.close()
 	return msg
 
 def eventTrigger(plid):
@@ -163,7 +171,7 @@ def eventTrigger(plid):
 					break
 
 	if not text:
-		if random.randint(1, 100) >= 50:
+		if random.randint(1, 100) >= 75:
 			ev = random.randint(1, 3)
 			if ev == 1:
 				text += f"\n{events.createEvent(plid)}"
@@ -176,4 +184,4 @@ def eventTrigger(plid):
 	return text
 
 if __name__ == '__main__':
-	print(itemAction(409541670, 4))
+	print(itemAction(409541670, 20))

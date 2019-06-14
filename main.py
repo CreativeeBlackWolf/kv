@@ -36,7 +36,8 @@ gamehelp = {
 	'save': 'save your position // !save',
 	'open': 'open the chest if u\'re on it // !open',
 	'action': 'action w/ item in inventory // !action (item number in inv.)',
-	'itemlist': 'check the item list in the shop // !itemlist'
+	'itemlist': 'check the item list in the shop // !itemlist',
+	'buy': 'buy the item // !buy (item number in merchant\'s inv.)'
 }
 
 sochelp = {
@@ -189,13 +190,16 @@ def main():
 					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("!open"):
-				if uid in ingame:
-					if len(event.text.split()) == 1:
-						vk.messages.send(user_id=uid, message=sh.openChest(uid))
+				if checkVersion(uid) >= 51:
+					if uid in ingame:
+						if len(event.text.split()) == 1:
+							vk.messages.send(user_id=uid, message=sh.openChest(uid))
+						else:
+							vk.messages.send(user_id=uid, message=gamehelp['open'])
 					else:
-						vk.messages.send(user_id=uid, message=gamehelp['open'])
+						vk.messages.send(user_id=uid, message="You must be in session")
 				else:
-					vk.messages.send(user_id=uid, message="You must be in session")
+					vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command")
 
 			if event.text.startswith("!action"):
 				if uid in ingame:
@@ -216,19 +220,25 @@ def main():
 					vk.messages.send(user_id=uid, message="You must be in session")
 
 			if event.text.startswith("!buy"):
-				if uid in ingame:
-					if len(event.text.split()) == 2:
-						vk.messages.send(user_id=uid, message=com.buyItem(uid, event.text.split()[1]))
+				if checkVersion(uid) >= 51:
+					if uid in ingame:
+						if len(event.text.split()) == 2:
+							vk.messages.send(user_id=uid, message=com.buyItem(uid, event.text.split()[1]))
+						else:
+							vk.messages.send(user_id=uid, message=gamehelp['buy'])
 					else:
-						vk.messages.send(user_id=uid, message=gamehelp['buy'])
+						vk.messages.send(user_id=uid, message="You must be in session")
 				else:
-					vk.messages.send(user_id=uid, message="You must be in session")
+					vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command")
 
 			if event.text.startswith("~tradeinv"):
-				if len(event.text.split()) == 1:
-					vk.messages.send(user_id=uid, message=com.showTradeInventory(uid))
+				if checkVersion(uid) >= 51:
+					if len(event.text.split()) == 1:
+						vk.messages.send(user_id=uid, message=com.showTradeInventory(uid))
+					else:
+						vk.messages.send(user_id=uid, message=comhelp['tradeinv'])
 				else:
-					vk.messages.send(user_id=uid, message=comhelp['tradeinv'])
+					vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command")
 
 			if event.text.startswith("!tileplayers"):
 				if uid in ingame:
@@ -272,7 +282,7 @@ def main():
 						else:
 							vk.messages.send(user_id=uid, message=sochelp['sendgift'])
 					else:
-						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command.")
 				else:
 					vk.messages.send(user_id=uid, message="Register first")
 
@@ -284,7 +294,7 @@ def main():
 						else:
 							vk.messages.send(user_id=uid, message=sochelp['acceptgift'])
 					else:
-						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command.")
 				else:
 					vk.messages.send(user_id=uid, message="Register first")
 
@@ -296,7 +306,7 @@ def main():
 						else:
 							vk.messages.send(user_id=uid, message=sochelp['rejectgift'])
 					else:
-						vk.messages.send(user_id=uid, message="Upgrade account to the latest version.")
+						vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command.")
 				else:
 					vk.messages.send(user_id=uid, message="Register first")
 
@@ -384,6 +394,8 @@ help: {comhelp['help']}
 
 gamehelp: {comhelp['gamehelp']}
 
+socialhelp: {comhelp['socialhelp']}
+
 ping: {comhelp['ping']}
 
 register: {comhelp['register']}
@@ -427,6 +439,8 @@ open: {gamehelp['open']}
 action: {gamehelp['action']}
 
 itemlist: {gamehelp['itemlist']}
+
+buy: {gamehelp['buy']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(event.text.split()) == 2:
