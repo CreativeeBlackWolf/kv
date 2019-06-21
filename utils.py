@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import commands as com
+import xml.etree.cElementTree as ET
 
 def isExist(id):
 	data = sqlite3.connect("lop.db")
@@ -22,8 +24,6 @@ def inInventory(plid, itemNumber):
 	return True
 
 def inTrade(plid, itemNumber):
-	if not inInventory(plid, itemNumber):
-		return None
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
 	c.execute("SELECT inTrade FROM inventory WHERE number=?", [itemNumber])
@@ -32,6 +32,19 @@ def inTrade(plid, itemNumber):
 		data.close()
 		return True
 	data.close()
+	return False
+
+def inTradeZone(plid):
+	coords = com.getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	for obj in root.findall("objectgroup"):
+		if obj.attrib['name'] == "TradeZone":
+			for trz in obj:
+				if int(trz.attrib['x']) == x and int(trz.attrib['y']) == y:
+					return True
 	return False
 
 def inFriends(plid, fid):
@@ -57,4 +70,4 @@ def checkVersion(plid):
 	return int(ver)
 
 if __name__ == "__main__":
-	print(inTrade(409541670, 2))
+	pass

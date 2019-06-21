@@ -170,6 +170,21 @@ def eventTrigger(plid):
 					text = "Here is the Merchant"
 					break
 
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == "TradeZones":
+			for tz in i:
+				if int(tz.attrib['x']) == x and int(tz.attrib['y']) == y:
+					data = sqlite3.connect("lop.db")
+					c = data.cursor()
+					c.execute("SELECT inTradeZone FROM players WHERE id=?", [plid])
+					if int(c.fetchone[0]) == 0:
+						c.execute("UPDATE players SET inTradeZone WHERE id=?", [plid])
+						data.commit()
+						text = "You entered in trade zone"
+					else:
+						text = "You're still in trade zone"
+					data.close()
+
 	if not text:
 		if random.randint(1, 100) >= 75:
 			ev = random.randint(1, 3)

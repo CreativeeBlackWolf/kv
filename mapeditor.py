@@ -1,10 +1,9 @@
 import xml.etree.cElementTree as ET
 
-
 def main():
 	while True:
 		try:
-			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n9. Выход\n>>>"))
+			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n5. Создать торговую зону\n6. Создать клетку\n9. Выход\n>>>"))
 		except:
 			continue
 		if not a:
@@ -189,7 +188,8 @@ def main():
 					ev = []
 					for objects in root.findall('objectgroup'):
 						for i in enumerate(objects):
-							ev.append(f"-- {i[1].attrib['name']}/{i[1].attrib['type']}: {i[1].attrib['x']};{i[1].attrib['y']}")
+							if i[1].attrib['type'] != "TradeZone":
+								ev.append(f"-- {i[1].attrib['name']}/{i[1].attrib['type']}: {i[1].attrib['x']};{i[1].attrib['y']}")
 					if not ev:
 						print("Ничего на карте не обнаружено")
 					else:
@@ -203,6 +203,89 @@ def main():
 						objects.remove(pl)
 			tree.write("session.tmx", "UTF-8")
 			print("Объекты игроков удалены с карты")
+		elif a == 5:
+			while True:
+				coords = input("\nКоординаты клетки начала (x;y): ")
+				if not coords:
+					break
+				coords = coords.split(";")
+				try:
+					x = int(coords[0])
+					y = int(coords[1])
+				except:
+					print("Неверно введены координаты")
+					continue
+				try:
+					width = int(input("Ширина зоны: "))
+					height = int(input("Высота зоны: "))
+					if width <= 0 or height <= 0:
+						print("Высота или ширина должна быть больше нуля")
+						continue
+				except:
+					print("Неверно введён параметр")
+					continue
+				w = []
+				h = []
+				for i in range(width):
+					w.append(dict(x=x+i, y=y))
+				for i in range(1, height):
+					h.append(dict(y=y+i))
+				for objects in root.findall('objectgroup'):
+					if objects.attrib['name'] == "TradeZones":
+						for xx in w:
+							ET.SubElement(objects, 'object', {"name": "", "type": "TradeZone", "x": f"{xx['x']}", "y": f"{xx['y']}", 'width': '1', 'height': '1'})
+							for yy in h:
+								ET.SubElement(objects, 'object', {"name": "", "type": "TradeZone", "x": f"{xx['x']}", "y": f"{yy['y']}", 'width': '1', 'height': '1'})
+				w.clear()
+				h.clear()
+				tree.write("session.tmx", "UTF-8")
+				print("Торговая зона успешно создана")
+		elif a == 6:
+			while True:
+				coords = input("\nКоординаты клетки (x;y): ")
+				if not coords:
+					break
+				coords = coords.split(";")
+				try:
+					x = int(coords[0])
+					y = int(coords[1])
+				except:
+					print("Неверно введены координаты")
+					continue
+				p = True
+				for objects in root.findall('objectgroup'):
+					for i in objects:
+						if int(i.attrib['x']) == x and int(i.attrib['y']) == y:
+							print(f"Здесь уже находится объект: {i.attrib['name']} // {i.attrib['type']}")
+							p = False
+				if not p:
+					continue
+				try:
+					sqType = int(input("Тип клетки:\n1. Сундук\n2. Пустой торговец\n3. Заполненый торговец\n4. Тесто\n9. Выход\n>>>"))
+				except:
+					print("Ошибка в вводе ответа")
+					continue
+				if sqType == 1:
+					try:
+						chType = int(input("Тип сундука:\n1. Standart\n2. Rare\n3. Exclusive\n4. Absolute\n5. Отмена\n>>>"))
+					except:
+						print("Ошибка в вводе ответа")
+						continue
+					for objects in root.findall('objectgroup'):
+						if objects.attrib['name'] == "Chests":
+							for i in objects:
+								if chType == 1:
+									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedStandart",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
+								elif chType == 2:
+									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedRare",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
+								elif chType == 3:
+									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedExclusive",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
+								elif chType == 4:
+									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedAbsolute",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
+								else:
+									break
+								tree.write("session.tmx", "UTF-8")
+								print("Объект создан")
 		elif a == 9:
 			break
 

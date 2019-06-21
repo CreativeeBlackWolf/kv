@@ -4,6 +4,9 @@ import vk_api
 from utils import *
 import versions
 import os
+import random
+from math import ceil
+import events as ev
 
 with open('token.txt', 'r') as f:
 	token = f.read()
@@ -93,7 +96,7 @@ def register(plid, fname, lname):
 	player = sqlite3.connect(os.path.join('pl', '{}.db'.format(plid)))
 	c = player.cursor()
 	c.execute("CREATE TABLE player (x_pos INTEGER, y_pos INTEGER, money INTEGER)")
-	c.execute("INSERT INTO player VALUES (25, 25, 127)")
+	c.execute("INSERT INTO player VALUES (25, 25, 127, 0)")
 	c.execute("CREATE TABLE friends (id INTEGER, name TEXT, status INTEGER)")
 	c.execute("""CREATE TABLE inventory (number INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 					name TEXT NOT NULL,
@@ -310,7 +313,13 @@ def showShopList(plid):
 	c = data.cursor()
 	c.execute("SELECT * FROM inventory")
 	if c.fetchone() is None:
-		return "Merchant has no items in inventory. Check him a bit later"
+		if ev.refillMerchant is False:
+			if random.randint() <= 50:
+				return ev.removeMerchant(plid)
+			else:
+				return "Merchant doesn't have any items now. Check him later"
+		else:
+			return "Merchant just got new items! Reenter the command to check them"
 	c.execute("SELECT * FROM inventory")
 	it = c.fetchall()
 	msg = "Merchant shop list:\n"
@@ -328,9 +337,10 @@ def buyItem(plid, itemNumber):
 	st = stats(plid)
 	data = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
 	c = data.cursor()
+	c.execute("SELECT * FROM inventory")
 	c.execute("SELECT price FROM inventory WHERE number=?", [itemNumber])
 	if c.fetchone() is None:
-		return "Wrong item number."
+		return "Wrong item number"
 	c.execute("SELECT price FROM inventory WHERE number=?", [itemNumber])
 	price = int(c.fetchone()[0])
 	if st.money < price:
@@ -350,6 +360,61 @@ def buyItem(plid, itemNumber):
 	pldata.commit()
 	pldata.close()
 	return "Item bought"
+
+def sellItem(plid, itemNumber):
+	coords = getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	if not os.path.exists(os.path.join("npc", f"merchant-{x}{y}.db")):
+		return "Here's no merchant on this square"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	if not inInventory(plid, itemNumber):
+		return "Wrong item number"
+	c.execute("SELECT * FROM inventory WHERE number=?", [itemNumber])
+	item = c.fetchone()
+	if item[4] == "Common":
+		mp = 1
+	if item[4] == "Uncommon":
+		mp = 1.2
+	if item[4] == "Rare":
+		mp = 1.4
+	if item[4] == "Exclusive":
+		mp = 1.8
+	if item[4] == "Absolute":
+		mp = 2.2
+	actions = item[5].split(" | ")
+	mdata = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
+	mc = mdata.cursor()
+	mc.execute("SELECT * FROM spList WHERE name=?", [item[1]])
+	if mc.fetchone() is None:
+		price = random.randint(len(actions)+8, ceil(len(actions)+10*mp))
+		mc.execute("INSERT INTO spList VALUES(?, ?)", [item[2], price])
+		mdata.commit()
+	else:
+		mc.execute("SELECT price FROM spList WHERE name=?", [item[2]])
+		price = int(mc.fetchone()[0])
+	mdata.close()
+	c.execute("DELETE FROM inventory WHERE itemNumber=?", [itemNumber])
+	c.execute("UPDATE player SET money = money + ?", [price])
+	c.execute(f"""INSERT INTO trades (tradeType, tradeDesc, tradeStatus, name, desc, type, tier, actions, del, senderID, oiNum)
+				VALUES ('Sale', ?, 'Done', ?, ?, ?, ?, ?, ?, ?, ?)""",
+				[f"Selling item for {price}", item[1], item[2], item[3], item[4], item[5], item[6], f"merchant-{x}{y}", itemNumber])
+	data.commit()
+	data.close()
+	return f"Item sold, you got {price}"
+
+def putUpForAuc(plid, itemNumber, price):
+	if not inInventory(plid, itemNumber):
+		return "Wrong item number"
+	if not inTradeZone(plid):
+		return "You must be in trade zone to put the item up"
+	if inTrade(plid, itemNumber):
+		return "This item is already in some trade"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("UPDATE inventory SET inTrade=1 WHERE number=?", [itemNumber])
+	
 
 def removeFriend(plid, fid):
 	if not isExist(plid):

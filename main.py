@@ -18,7 +18,7 @@ comhelp = {
 	'register': 'register the account // ~register',
 	'deleteacc': 'delete the account // ~deleteacc',
 	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
-	'getCoords': 'get your coords // ~getCoords',
+	'whereami': 'we know where are you (x;y) // ~whereami',
 	'showinv': 'see your inv. // ~showinv',
 	'tradeinv': 'see your trade inv. // ~tradeinv',
 	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
@@ -37,7 +37,8 @@ gamehelp = {
 	'open': 'open the chest if u\'re on it // !open',
 	'action': 'action w/ item in inventory // !action (item number in inv.)',
 	'itemlist': 'check the item list in the shop // !itemlist',
-	'buy': 'buy the item // !buy (item number in merchant\'s inv.)'
+	'buy': 'buy the item // !buy (item number in merchant\'s inv.)',
+	'sell': 'sell the item // !sell (item number in inventory)'
 }
 
 sochelp = {
@@ -155,6 +156,26 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['deleteacc'])
 
+			if event.text.startswith('~secretkitty'):
+				if len(event.text.split()) == 1:
+					vk.messages.send(user_id=uid, message="""
+⊂_ヽ 
+　 ＼＼  Λ＿Λ 
+　　 ＼(　ˇωˇ)　 
+　　　 　⌒ヽ 
+　　　/ 　 へ＼ 
+　　 /　　/　＼＼ 
+　　 ﾚ　ノ　　 ヽ_つ 
+　　/　/ 
+　 /　/| 
+　(　(ヽ 
+　|　|、＼ 
+　| 丿 ＼ ⌒) 
+　| |　　) / 
+`ノ )　　Lﾉ 
+(_／
+""")
+
 			if event.text.startswith('~version'):
 				if len(event.text.split()) == 1:
 					vk.messages.send(user_id=uid, message=f"Account version: v.{checkVersion(uid)}\nLatest version: v.{ver.latestVersion}")
@@ -226,6 +247,18 @@ def main():
 							vk.messages.send(user_id=uid, message=com.buyItem(uid, event.text.split()[1]))
 						else:
 							vk.messages.send(user_id=uid, message=gamehelp['buy'])
+					else:
+						vk.messages.send(user_id=uid, message="You must be in session")
+				else:
+					vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command")
+
+			if event.text.startswith("!sell"):
+				if checkVersion(uid) >= 51:
+					if uid in ingame:
+						if len(event.text.split()) == 2:
+							vk.messages.send(user_id=uid, message=com.sellItem(uid, event.text.split()[1]))
+						else:
+							vk.messages.send(user_id=uid, message=gamehelp['sell'])
 					else:
 						vk.messages.send(user_id=uid, message="You must be in session")
 				else:
@@ -369,12 +402,12 @@ def main():
 				else:
 					vk.messages.send(user_id=uid, message=gamehelp['save'])
 
-			if event.text.startswith('~getCoords'):
+			if event.text.startswith('~whereami'):
 				if len(event.text.split()) == 1:
 					kurwa = com.getCoords(uid)
-					vk.messages.send(user_id=uid, message=f"U're on ({kurwa[0]}; {kurwa[1]})")
+					vk.messages.send(user_id=uid, message=f"You're on ({kurwa[0]};{kurwa[1]}) (x;y)")
 				else:
-					vk.messages.send(user_id=uid, message=comhelp['getCoords'])
+					vk.messages.send(user_id=uid, message=comhelp['whereami'])
 
 			if event.text.startswith("~!!dropsession"):
 				if event.user_id == cid:
@@ -413,6 +446,8 @@ tradeinv: {comhelp['tradeinv']}
 ruleofinternet: {comhelp['ruleofinternet']}
 
 loli: {comhelp['loli']}
+
+whereami: {comhelp['whereami']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				elif len(event.text.split()) == 2:
@@ -441,6 +476,8 @@ action: {gamehelp['action']}
 itemlist: {gamehelp['itemlist']}
 
 buy: {gamehelp['buy']}
+
+sell: {gamehelp['sell']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				if len(event.text.split()) == 2:
@@ -474,8 +511,6 @@ sendgift: {sochelp['sendgift']}
 						vk.messages.send(user_id=uid, message=sochelp[event.text.split()[1]])
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~socialhelp")
-
-
 
 if __name__ == '__main__':
 	main()

@@ -48,8 +48,38 @@ def spawnMerchant(plid):
 			tree.write("session.tmx", "UTF-8")
 			return "Here is the Merchant"
 
-def fillMerchant(plid):
-	pass
+def refillMerchant(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	coords = com.getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	for i in root.findall("objectgroup"):
+		if i.attrib['name'] == "Merchants":
+			for m in i:
+				if int(m.attrib['x']) == x and int(m.attrib['y']) == y:
+					if random.randint(0, 100) <= 50:
+						gen = gi.Item(plid)
+						for r in range(random.randint(3, 7)):
+							gen.addMerchantItem([x, y], "Common", "Uncommon", "Rare")
+						return True
+					else:
+						return False
+
+def removeMerchant(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	coords = com.getCoords(plid)
+	x = coords[0]
+	y = coords[1]
+	for i in root.findall("objectgroup"):
+		if i.attrib['name'] == "Merchants":
+			for m in i:
+				if int(m.attrib['x']) == x and int(m.attrib['y']) == y:
+					i.remove(m)
+					os.remove(os.path.join("npc", f"merchant-{x}{y}.db"))
+					tree.write("session.tmx", "UTF-8")
+					return "Merchant just went away"
 
 def genChest(plid):
 	chest = random.randint(0, 100)
