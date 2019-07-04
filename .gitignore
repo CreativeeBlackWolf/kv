@@ -1,7 +1,9 @@
 *.txt
 /__pycache__
 /pl
+/npc
+/photos
 *.tmx
 *.db
 *.json
-/npc
+test.py

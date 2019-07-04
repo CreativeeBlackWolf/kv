@@ -3,6 +3,9 @@ import os
 import commands as com
 import xml.etree.cElementTree as ET
 
+def toFixed(numObj, digits=0):
+	return f"{numObj:.{digits}f}"
+
 def isExist(id):
 	data = sqlite3.connect("lop.db")
 	c = data.cursor()
@@ -35,17 +38,14 @@ def inTrade(plid, itemNumber):
 	return False
 
 def inTradeZone(plid):
-	coords = com.getCoords(plid)
-	x = coords[0]
-	y = coords[1]
-	tree = ET.parse("session.tmx")
-	root = tree.getroot()
-	for obj in root.findall("objectgroup"):
-		if obj.attrib['name'] == "TradeZone":
-			for trz in obj:
-				if int(trz.attrib['x']) == x and int(trz.attrib['y']) == y:
-					return True
-	return False
+	data = sqlite3.connect("lop.db")
+	c = data.cursor()
+	c.execute("SELECT inTradeZone FROM players WHERE id=?", [plid])
+	if int(c.fetchone()[0]):
+		data.close()
+		return False
+	data.close()
+	return True
 
 def inFriends(plid, fid):
 	data = sqlite3.connect(os.path.join('pl', f'{plid}.db'))

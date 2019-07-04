@@ -328,6 +328,18 @@ def showShopList(plid):
 	data.close()
 	return msg
 
+def itemDesc(plid, itemNumber):
+	if not isExist(plid):
+		return "User is not found"
+	if not inInventory(plid, itemNumber):
+		return "Item is not found"
+	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
+	c = data.cursor()
+	c.execute("SELECT name, desc FROM inventory WHERE number=?", [itemNumber])
+	desc = c.fetchone()
+	data.close()
+	return f"{desc[0]} ({desc[1]})"
+
 def buyItem(plid, itemNumber):
 	coords = getCoords(plid)
 	x = coords[0]
@@ -414,7 +426,6 @@ def putUpForAuc(plid, itemNumber, price):
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
 	c.execute("UPDATE inventory SET inTrade=1 WHERE number=?", [itemNumber])
-	
 
 def removeFriend(plid, fid):
 	if not isExist(plid):
@@ -561,10 +572,11 @@ def playerToMap(plid):
 	for i in root.findall('objectgroup'):
 		if i.attrib['name'] == 'Players':
 			ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'type': 'Player', 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
-	objects = root.findall('objectgroup/object')
-	for i in objects:
-		if i.attrib['name'] == str(plid):
-			ET.SubElement(i, 'ellipse')
+	for i in root.findall('objectgroup'):
+		if i.attrib['name'] == 'Players':
+			for p in i:
+				if p.attrib['name'] == str(plid):
+					ET.SubElement(p, 'ellipse')
 	tree.write('session.tmx', 'UTF-8')
 
 def mapLeave(plid):
@@ -577,10 +589,11 @@ def mapLeave(plid):
 	data.commit()
 	data.close()
 	for objects in root.findall('objectgroup'):
-		for x in objects:
-			if x.attrib['name'] == str(plid):
-				objects.remove(x)
-				tree.write('session.tmx', 'UTF-8')
+		if objects.attrib['name'] == "Players":
+			for x in objects:
+				if x.attrib['name'] == str(plid):
+					objects.remove(x)
+					tree.write('session.tmx', 'UTF-8')
 
 def getCoords(plid):
 	if not isExist(plid):
@@ -598,5 +611,4 @@ def getCoords(plid):
 	return st.x_pos, st.y_pos	
 
 if __name__ == '__main__':
-	print(friendList(409541670))
-
+	pass

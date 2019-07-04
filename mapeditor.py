@@ -1,9 +1,10 @@
 import xml.etree.cElementTree as ET
+import os
 
 def main():
 	while True:
 		try:
-			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n5. Создать торговую зону\n6. Создать клетку\n9. Выход\n>>>"))
+			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n5. Создать торговую зону\n6. Создать клетку\n7. Телепортировать игрока\n9. Выход\n>>>"))
 		except:
 			continue
 		if not a:
@@ -286,6 +287,41 @@ def main():
 									break
 								tree.write("session.tmx", "UTF-8")
 								print("Объект создан")
+		elif a == 7:
+			while True:
+				plid = input("\nID игрока: ")
+				if not plid:
+					break
+				try:
+					plid = int(plid)
+				except:
+					print("ID игрока введён некорректно")
+					continue
+				p = False
+				for i in root.findall("objectgroup"):
+					if i.attrib['name'] == "Players":
+						for pl in i:
+							if pl.attrib['name'] == str(plid):
+								while True:
+									coords = input("\nКоординаты клетки для телепорта (x;y): ")
+									if not coords:
+										break
+									coords = coords.split(";")
+									try:
+										x = int(coords[0])
+										y = int(coords[1])
+									except:
+										print("Неверно введены координаты")
+										continue
+									pl.set("x", f"{x}")
+									pl.set("y", f"{y}")
+									tree.write("session.tmx", "UTF-8")
+									p = True
+									break
+				if p:
+					print("Игрок перемещён")
+				else:
+					print("Игрок не найден на карте")
 		elif a == 9:
 			break
 

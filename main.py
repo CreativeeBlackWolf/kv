@@ -5,6 +5,8 @@ import os
 import sessionhandler as sh
 from utils import *
 import random
+import urllib.request
+from math import ceil
 import versions as ver
 import commands as com
 from importlib import reload
@@ -12,7 +14,7 @@ from importlib import reload
 ingame = []
 
 comhelp = {
-	'help': 'show the help message for command/to see commands list // ~help [command]',
+	'help': 'show the help message for command/to see commands list // ~help or "~" [command]',
 	'pingS': 'u can\'t write "~ping"?',
 	'ping': 'just ping the bot // ~ping',
 	'register': 'register the account // ~register',
@@ -21,11 +23,14 @@ comhelp = {
 	'whereami': 'we know where are you (x;y) // ~whereami',
 	'showinv': 'see your inv. // ~showinv',
 	'tradeinv': 'see your trade inv. // ~tradeinv',
-	'gamehelp': 'help for ingame commands // ~gamehelp [command]',
-	'socialhelp': 'help for social commands // ~socialhelp [command]',
+	'gamehelp': 'help for ingame commands // ~gamehelp or "!" [command]',
+	'socialhelp': 'help for social commands // ~socialhelp or "/" [command]',
 	'loli': 'catch the random loli // ~loli',
 	'version': 'find out account version // ~version',
-	'upgrade': 'upgrate to latest account version // ~upgrade'
+	'upgrade': 'upgrate to latest account version // ~upgrade',
+	'upload': 'upload the picture to bot\'s drive // ~uploadone (photo attachment)',
+	'uploadmany': 'upload the pictureS to bot\'s drive // ~uploadone (photo attachmentS)',
+	'description': 'see item desc in ur inv. // ~description'
 }
 
 gamehelp = {
@@ -57,7 +62,15 @@ with open('token.txt', 'r') as f:
 	token = f.read()
 vk_session = vk_api.VkApi(token=token)
 longpoll = VkLongPoll(vk_session)
+print("Longpool authorized.")
 vk = vk_session.get_api()
+print("API things authorized.")
+
+with open("usertoken.txt", "r") as uf:
+	usertoken = uf.read()
+uservkSession = vk_api.VkApi(token=usertoken)
+uvk = uservkSession.get_api()
+print("User API things authorized.")
 
 def main():
 	upload = vk_api.VkUpload(vk_session)
@@ -68,6 +81,7 @@ def main():
 			uid = f.read()
 		os.remove('.rsttemp')
 		vk.messages.send(user_id=uid, message="Bot restarted")
+	print("---------------Rdy to use---------------")
 	for event in longpoll.listen():
 		if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text: #Слушаем longpoll, если пришло сообщение то:
 			uid = event.user_id
@@ -78,11 +92,48 @@ def main():
 
 			if event.text.startswith("~loli"):
 				if len(event.text.split()) == 1:
-					photo = random.choice(os.listdir("E:\\lolies"))
-					onUpload = upload.photo_messages(photos="E:\\lolies\\" + photo)[0]
+					directory = "\\photos"
+					photo = random.choice(os.listdir(directory))
+					onUpload = upload.photo_messages(photos=directory + photo)[0]
 					vk.messages.send(user_id=uid, message="here's your random loli", attachment=f"photo{onUpload['owner_id']}_{onUpload['id']}")
 				else:
 					vk.messages.send(user_id=uid, message=comhelp['loli'])
+
+			if event.text.startswith("~uploadone"):
+				if len(event.text.split()) == 1:
+					if len(event.attachments) == 2:
+						if event.attachments["attach1_type"] == "photo":
+							photo = uvk.photos.getById(photos=event.attachments["attach1"])[0]["sizes"][-1]
+							urllib.request.urlretrieve(photo["url"], os.path.join("photos", f"{photo['url'].split('/')[-1]}"))
+							vk.messages.send(user_id=uid, message="Successfully uploaded on bot\'s drive")
+						else:
+							vk.messages.send(user_id=uid, message=f"The attachment type must be 'photo', not {event.attachments['attach1_type']}")
+					else:
+						vk.messages.send(user_id=uid, message="You can upload only one image")
+				else:
+					vk.messages.send(user_id=uid, message=comhelp["upload"])
+			
+			if event.text.startswith("~uploadmany"):
+				if len(event.attachments) >= 2:
+					urls = []
+					for att in range(1, len(event.attachments) // 2 + 1):
+						if event.attachments[f"attach{att}_type"] == "photo":
+							urls.append(uvk.photos.getById(photos=event.attachments[f"attach{att}"])[0]["sizes"][-1]["url"])
+						else:
+							vk.messages.send(user_id=uid, message=f"Attachment {att} will not be uploaded (attachmentType:{event.attachments[f'attach{att}_type']})")
+					if urls:
+						dots = f"00.00%: 0/{len(urls)}"
+						message = vk.messages.send(user_id=uid, message=f"{dots}")
+						print(message)
+						for url in enumerate(urls):
+							urllib.request.urlretrieve(url[1], os.path.join("photos", f"{url[1].split('/')[-1]}"))
+							dots = ("=" * url[0]) + ">"
+							vk.messages.edit(peer_id=uid, message_id=message, message=f"{toFixed((url[0]+1)/len(urls) * 100, 2)}% | {url[0]+1}/{len(urls)}")
+						vk.messages.edit(peer_id=uid, message_id=message, message="Attachments uploaded to bot's drive")
+						
+				else:
+					vk.messages.send(user_id=uid, message="You don't attached anything")
+
 
 			"""
 			2 commands w/ secret syntax
@@ -108,6 +159,7 @@ def main():
 							vk.messages.send(user_id=i, message="Your account has been forcibly removed from the session.")
 							vk.messages.send(user_id=uid, message=f"{vk.users.get(user_ids=i)[0]['first_name']} был удалён из сессии")
 					vk.messages.send(user_id=uid, message='Restarting bot...')
+					print("Started restart")
 					with open('.rsttemp', 'w') as f:
 						f.write(str(event.user_id))
 					os.execv(sys.executable, ['python'] + sys.argv)
@@ -221,6 +273,12 @@ def main():
 						vk.messages.send(user_id=uid, message="You must be in session")
 				else:
 					vk.messages.send(user_id=uid, message="Upgrade account to the latest version with '~upgrade' command")
+
+			if event.text.startswith("~description"):
+				if len(event.text.split()) == 2:
+					vk.messages.send(user_id=uid, message=com.itemDesc(uid, event.text.split()[1]))
+				else:
+					vk.messages.send(user_id=uid, message=comhelp['description'])
 
 			if event.text.startswith("!action"):
 				if uid in ingame:
@@ -420,7 +478,7 @@ def main():
 					else:
 						vk.messages.send(user_id=uid, message='Никого в сессии нет, еблан')
 
-			if event.text.startswith('~help'):
+			if event.text.startswith('~help') or event.text.split()[0] == "~":
 				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "~"
 help: {comhelp['help']}
@@ -441,6 +499,8 @@ upgrade: {comhelp['upgrade']}
 
 showinv: {comhelp['showinv']}
 
+description: {comhelp['description']}
+
 tradeinv: {comhelp['tradeinv']}
 
 ruleofinternet: {comhelp['ruleofinternet']}
@@ -448,6 +508,10 @@ ruleofinternet: {comhelp['ruleofinternet']}
 loli: {comhelp['loli']}
 
 whereami: {comhelp['whereami']}
+
+uploadone: {comhelp['upload']}
+
+uploadmany: {comhelp['uploadmany']}
 """
 					vk.messages.send(user_id=uid, message=msg)
 				elif len(event.text.split()) == 2:
@@ -456,7 +520,7 @@ whereami: {comhelp['whereami']}
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~help")
 
-			if event.text.startswith("~gamehelp"):
+			if event.text.startswith("~gamehelp") or event.text.split()[0] == "!":
 				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "!"
 enter: {gamehelp['enter']}
@@ -486,7 +550,7 @@ sell: {gamehelp['sell']}
 					else:
 						vk.messages.send(user_id=uid, message="Command is not found. Try ~gamehelp")
 
-			if event.text.startswith("~socialhelp"):
+			if event.text.startswith("~socialhelp") or event.text.split()[0] == "/":
 				if len(event.text.split()) == 1:
 					msg = f"""These commands have the prefix "/"
 chat: {sochelp['chat']}
