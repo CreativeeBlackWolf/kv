@@ -154,7 +154,7 @@ def addFriend(plid, fid):
 		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
 		c = friend.cursor()
 		c.execute("INSERT INTO friends VALUES (?, ?, ?)", [plid, searchByID(plid), "Request"])
-		vk.messages.send(user_id=fid, message=f"""{searchByID(plid)} sent a friend request.
+		vk.messages.send(random_id=0, user_id=fid, message=f"""{searchByID(plid)} sent a friend request.
 Enter "/addfriend {plid}" to accept it.
 Enter "/denyrequest {plid}" to deny it.""")
 		friend.commit()
@@ -169,7 +169,7 @@ Enter "/denyrequest {plid}" to deny it.""")
 		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
 		c = friend.cursor()
 		c.execute("UPDATE friends SET status='Accepted' WHERE id=?", [plid])
-		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has accepted friend request")
+		vk.messages.send(random_id=0, user_id=fid, message=f"{searchByID(plid)} has accepted friend request")
 		friend.commit()
 		friend.close()
 		return "Request accepted"
@@ -221,7 +221,7 @@ def sendMoney(plid, fid, count):
 	pl.commit()
 	pl.close()
 	sender = vk.users.get(user_ids=plid, name_case="gen")[0]
-	vk.messages.send(user_id=fid, message=f"You got {count} credits from {sender['first_name']} {sender['last_name']}")
+	vk.messages.send(random_id=0, user_id=fid, message=f"You got {count} credits from {sender['first_name']} {sender['last_name']}")
 	return "Your money were successfully sent to the player"
 
 def sendGift(plid, fid, itemNumber, message):
@@ -255,7 +255,7 @@ def sendGift(plid, fid, itemNumber, message):
 	tradeNum = c.fetchone()[0]
 	fdata.commit()
 	fdata.close()
-	vk.messages.send(user_id=fid, message=f"""You got a Gift from {sender['first_name']} {sender['last_name']} with message: {message}
+	vk.messages.send(random_id=0, user_id=fid, message=f"""You got a Gift from {sender['first_name']} {sender['last_name']} with message: {message}
 Enter /acceptGift {tradeNum} to accept it
 Or enter /rejectGift {tradeNum} to reject it""")
 	return "Trade request sended."
@@ -279,7 +279,7 @@ def acceptGift(plid, tradeNumber):
 	tr = c.fetchone()[0]
 	fdata.commit()
 	fdata.close()
-	vk.messages.send(user_id=item[10], message=f"Your gift (trade№: {tr}) was accepted")
+	vk.messages.send(random_id=0, user_id=item[10], message=f"Your gift (trade№: {tr}) was accepted")
 	return "Gift accepted and added to your inventory"
 
 def rejectGift(plid, tradeNumber):
@@ -300,7 +300,7 @@ def rejectGift(plid, tradeNumber):
 	tr = c.fetchone()[0]
 	fdata.commit()
 	fdata.close()
-	vk.messages.send(user_id=tr[10], message=f"Your gift (trade№: {tr}) was accepted")
+	vk.messages.send(random_id=0, user_id=tr[10], message=f"Your gift (trade№: {tr}) was accepted")
 	return "Gift rejected"
 
 def showShopList(plid):
@@ -344,7 +344,7 @@ def buyItem(plid, itemNumber):
 	coords = getCoords(plid)
 	x = coords[0]
 	y = coords[1]
-	if not os.path.exists(os.path.join("npc", f"merchant-{x}{y}.db" )):
+	if not os.path.exists(os.path.join("npc", f"merchant-{x}{y}.db")):
 		return "Here's no merchant on this square"
 	st = stats(plid)
 	data = sqlite3.connect(os.path.join("npc", f"merchant-{x}{y}.db"))
@@ -416,6 +416,42 @@ def sellItem(plid, itemNumber):
 	data.close()
 	return f"Item sold, you got {price}"
 
+def actions(plid):
+	tree = ET.parse("session.tmx")
+	root = tree.getroot()
+	cds = getCoords(plid)
+	x = cds[0]
+	y = cds[1]
+	acts = []
+	acts.append("Save -- You can save the current position")
+	acts.append("Leave -- You can leave from the game")
+	acts.append(">You can move in any directions")
+
+	for objects in root.findall('objectgroup'):
+
+		if objects.attrib['name'] == "Merchants":
+			for m in objects:
+				if m.attrib['x'] == str(x) and m.attrib['y'] == str(y):
+					acts.append("Check -- You can check the itemlist")
+					acts.append("Buy -- You can buy an item")
+		
+		if objects.attrib['name'] == "Players":
+			for p in objects:
+				if p.attrib['x'] == str(x) and p.attrib['y'] == str(y):
+					if p.attrib['name'] != str(plid):
+						acts.append(">You can try to interact with other players on this square")
+
+		if objects.attrib['name'] == "Chests":
+			for ch in objects:
+				if ch.attrib['x'] == str(x) and ch.attrib['y'] == str(y):
+					acts.append(f"Open -- You can open the {ch.attrib['type'][6:]} Chest")
+
+	if inTradeZone(plid):
+		acts.append(">You're in the trade zone. Note that.")
+
+	acts.sort()
+	return "\n".join(acts)
+
 def putUpForAuc(plid, itemNumber, price):
 	if not inInventory(plid, itemNumber):
 		return "Wrong item number"
@@ -449,7 +485,7 @@ def removeFriend(plid, fid):
 		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
 		c = friend.cursor()
 		c.execute("DELETE FROM friends WHERE id=?", [plid])
-		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has removed you from friend list. :c\nUse \"/addfriend {plid}\" to send friend request")
+		vk.messages.send(random_id=0, user_id=fid, message=f"{searchByID(plid)} has removed you from friend list. :c\nUse \"/addfriend {plid}\" to send friend request")
 		friend.commit()
 		friend.close()
 		return f"User has been removed from your friend list. \nUse \"/addfriend {fid}\" to send friend request"
@@ -472,7 +508,7 @@ def denyFriendRequest(plid, fid):
 		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
 		c = friend.cursor()
 		c.execute("DELETE FROM friends WHERE id=?", [plid])
-		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has denied friend request")
+		vk.messages.send(random_id=0, user_id=fid, message=f"{searchByID(plid)} has denied friend request")
 		friend.commit()
 		friend.close()
 		return "Request denied"
@@ -483,7 +519,7 @@ def denyFriendRequest(plid, fid):
 		friend = sqlite3.connect(os.path.join("pl", f"{fid}.db"))
 		c = friend.cursor()
 		c.execute("DELETE FROM friends WHERE id=?", [plid])
-		vk.messages.send(user_id=fid, message=f"{searchByID(plid)} has canceled friend request")
+		vk.messages.send(random_id=0, user_id=fid, message=f"{searchByID(plid)} has canceled friend request")
 		friend.commit()
 		friend.close()
 		return "Request canceled"
@@ -596,6 +632,9 @@ def mapLeave(plid):
 					tree.write('session.tmx', 'UTF-8')
 
 def getCoords(plid):
+	"""
+		Returns X and Y position for player (tuple)
+	"""
 	if not isExist(plid):
 		return "Register first"
 	tree = ET.parse("session.tmx")

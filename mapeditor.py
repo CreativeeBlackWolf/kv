@@ -1,11 +1,20 @@
 import xml.etree.cElementTree as ET
 import os
+import utils
 
 def main():
 	while True:
+		if not os.path.exists("session.tmx"):
+			cm = input("Файл карты не был найден. Создать его? (y/n)")
+			if cm in ["да", "yes", "y", "д", "пизда"]:
+				createmap = utils.dynamicImport("mapManagment")
+				createmap.mapCreate()
+				continue
+			else:
+				return "Выход..."
 		try:
 			a = int(input("\nВыберите действие:\n1. Редактировать клетку\n2. Удалить клетку\n3. Просмотреть все объекты данного типа\n4. Убрать все объекты игроков\n5. Создать торговую зону\n6. Создать клетку\n7. Телепортировать игрока\n9. Выход\n>>>"))
-		except:
+		except ValueError:
 			continue
 		if not a:
 			continue
@@ -20,7 +29,7 @@ def main():
 				try:
 					x = int(coords[0])
 					y = int(coords[1])
-				except:
+				except ValueError:
 					print("Неверно введены координаты")
 					continue
 				for objects in root.findall('objectgroup'):
@@ -61,13 +70,13 @@ def main():
 								if objects.attrib['name'] != "Players":
 									try:
 										typeEdit = int(input("Изменить объект на:\n1. Chest\n2. Event\n9. Выход\n>>>"))
-									except:
+									except ValueError:
 										print("Неверно введён аргумент")
 										break
 									if typeEdit == 1:
 										try:
 											chestType = int(input("Тип сундука:\n1. ClosedStandart\n2. ClosedRare\n3. ClosedExclusive\n4. ClosedAbsolute\n5. Отмена\n>>>"))
-										except:
+										except ValueError:
 											print("Неверно введён аргумент")
 											break
 										if chestType not in [1, 2, 3, 4, 5]:
@@ -94,7 +103,7 @@ def main():
 									if typeEdit == 2:
 										try:
 											eventType = int(input("Тип ивента:\n1. eventTest\n9. Отмена\n>>>"))
-										except:
+										except ValueError:
 											print("Неверно введён аргумент")
 											break
 										if eventType == 9:
@@ -123,7 +132,7 @@ def main():
 				try:
 					x = int(coords[0])
 					y = int(coords[1])
-				except:
+				except ValueError:
 					print("Неверно введены координаты")
 					continue
 				for objects in root.findall('objectgroup'):
@@ -143,7 +152,7 @@ def main():
 			while True:
 				try:
 					t = int(input("\nОбъекты:\n1. Игроки\n2. Триггеры\n3. Сундуки\n4. Торговцы\n5. Всё\n9. Выход\n>>>"))
-				except:
+				except ValueError:
 					continue
 				if t == 1:
 					players = []
@@ -213,7 +222,7 @@ def main():
 				try:
 					x = int(coords[0])
 					y = int(coords[1])
-				except:
+				except ValueError:
 					print("Неверно введены координаты")
 					continue
 				try:
@@ -222,7 +231,7 @@ def main():
 					if width <= 0 or height <= 0:
 						print("Высота или ширина должна быть больше нуля")
 						continue
-				except:
+				except ValueError:
 					print("Неверно введён параметр")
 					continue
 				w = []
@@ -250,7 +259,7 @@ def main():
 				try:
 					x = int(coords[0])
 					y = int(coords[1])
-				except:
+				except ValueError:
 					print("Неверно введены координаты")
 					continue
 				p = True
@@ -263,13 +272,13 @@ def main():
 					continue
 				try:
 					sqType = int(input("Тип клетки:\n1. Сундук\n2. Пустой торговец\n3. Заполненый торговец\n4. Тесто\n9. Выход\n>>>"))
-				except:
+				except ValueError:
 					print("Ошибка в вводе ответа")
 					continue
 				if sqType == 1:
 					try:
 						chType = int(input("Тип сундука:\n1. Standart\n2. Rare\n3. Exclusive\n4. Absolute\n5. Отмена\n>>>"))
-					except:
+					except ValueError:
 						print("Ошибка в вводе ответа")
 						continue
 					for objects in root.findall('objectgroup'):
@@ -283,10 +292,10 @@ def main():
 									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedExclusive",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
 								elif chType == 4:
 									ET.SubElement(objects, "object", {"name": "Chest", "type": "ClosedAbsolute",  'x': str(x), 'y': str(y), 'width': '1', 'height': '1'})
-								else:
-									break
 								tree.write("session.tmx", "UTF-8")
-								print("Объект создан")
+								if chType in [1, 2, 3, 4]: 
+									print("Объект создан")
+								break
 		elif a == 7:
 			while True:
 				plid = input("\nID игрока: ")
@@ -294,7 +303,7 @@ def main():
 					break
 				try:
 					plid = int(plid)
-				except:
+				except ValueError:
 					print("ID игрока введён некорректно")
 					continue
 				p = False
@@ -310,7 +319,7 @@ def main():
 									try:
 										x = int(coords[0])
 										y = int(coords[1])
-									except:
+									except ValueError:
 										print("Неверно введены координаты")
 										continue
 									pl.set("x", f"{x}")
@@ -327,7 +336,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-	#tree = ET.parse("session.tmx")
-	#root = tree.getroot()
-	#for objects in root.findall('objectgroup'):
-	#	print(objects.attrib['name'])

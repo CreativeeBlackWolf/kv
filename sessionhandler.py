@@ -45,7 +45,7 @@ def move(plid, direction):
 			for players in i:
 				if int(players.attrib['x']) == int(oldcoords[0]) and int(players.attrib['y']) == int(oldcoords[1]):
 					if players.attrib['name'] != plid:	
-						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} has left from your square.")
+						vk.messages.send(random_id=0, user_id=players.attrib['name'], message=f"{com.searchByID(plid)} has left from your square.")
 
 	tree.write('session.tmx', 'UTF-8')
 	tr = eventTrigger(plid)
@@ -63,9 +63,9 @@ def chat(plid, msg, action=False):
 			for players in i:
 				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
 					if not action:
-						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)}: {msg}")
+						vk.messages.send(random_id=0, user_id=players.attrib['name'], message=f"{com.searchByID(plid)}: {msg}")
 					else:
-						vk.messages.send(user_id=players.attrib['name'], message=f"{com.searchByID(plid)} {msg}")
+						vk.messages.send(random_id=0, user_id=players.attrib['name'], message=f"{com.searchByID(plid)} {msg}")
 
 def openChest(plid):
 	tree = ET.parse("session.tmx")
@@ -134,7 +134,7 @@ def eventTrigger(plid):
 			for players in i:
 				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
 					if players.attrib['name'] != str(plid):
-						vk.messages.send(user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come.")
+						vk.messages.send(random_id=0, user_id=players.attrib['name'], message=f"The {com.searchByID(plid)} has come.")
 						text = "There're some players on this position"
 
 	for i in root.findall('objectgroup'):
@@ -212,4 +212,4 @@ def eventTrigger(plid):
 	return text
 
 if __name__ == '__main__':
-	print(itemAction(409541670, 20))
+	pass
