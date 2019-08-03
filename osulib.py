@@ -1,8 +1,6 @@
 import requests
 import json
 from enum import Enum
-import requests
-import json
 from osu.pp_calc import acc_calc
 
 osuSTD = 0
