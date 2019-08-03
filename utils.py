@@ -102,4 +102,4 @@ def checkVersion(plid):
 	return int(ver)
 
 if __name__ == "__main__":
-	print(checkURL("хдд"))
+	pass

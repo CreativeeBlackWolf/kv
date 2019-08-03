@@ -109,4 +109,4 @@ def event_Test():
 	return "пiпався"
 
 if __name__ == "__main__":
-	print(spawnMerchant(409541670))
+	pass

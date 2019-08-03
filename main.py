@@ -1,6 +1,5 @@
 from vk_api.longpoll import VkLongPoll, VkEventType
 from time import gmtime, strftime
-from math import ceil
 from importlib import reload
 import vk_api
 import sys
@@ -573,7 +572,7 @@ A ranks: {user["A"]}
 							vk.messages.send(random_id=0, user_id=uid, message=sochelp['sendmoney'])
 
 					if event.text.startswith("/sendgift"):
-						if isExist(uid):
+						if ut.isExist(uid):
 							if ut.checkVersion(uid) >= ver.latestVersion:
 								if len(event.text.split()) >= 3:
 									if ut.checkVersion(event.text.split()[1]) >= 51:
@@ -588,7 +587,7 @@ A ranks: {user["A"]}
 							vk.messages.send(random_id=0, user_id=uid, message="Register first")
 
 					if event.text.startswith("/acceptgift"):
-						if isExist(uid):
+						if ut.isExist(uid):
 							if ut.checkVersion(uid) >= ver.latestVersion:
 								if len(event.text.split()) == 2:
 									vk.messages.send(random_id=0, user_id=uid, message=com.acceptGift(uid, event.text.split()[1]))

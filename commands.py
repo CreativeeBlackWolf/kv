@@ -1,7 +1,7 @@
 import xml.etree.cElementTree as ET
 import sqlite3
 import vk_api
-from utils import *
+import utils as ut
 import versions
 import os
 import random
@@ -84,7 +84,7 @@ def rofi(num):
 		return "Index is out of range (total rules in the database: {})".format(len(rulesofinternet))
 
 def register(plid, fname, lname):
-	if isExist(plid):
+	if ut.isExist(plid):
 		return "U're already registered"
 	
 	data = sqlite3.connect("lop.db")
@@ -123,7 +123,7 @@ def register(plid, fname, lname):
 	return f"Welcome to the game, {fname}"
 
 def delete(plid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	data = sqlite3.connect("lop.db")
 	c = data.cursor()
@@ -137,9 +137,9 @@ def delete(plid):
 	return "Account deleted. Seeya next time"
 
 def addFriend(plid, fid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
-	if not isExist(fid):
+	if not ut.isExist(fid):
 		return "ID is not registered"
 	if str(plid) == str(fid):
 		return "You have no friends?"
@@ -175,7 +175,7 @@ Enter "/denyrequest {plid}" to deny it.""")
 		return "Request accepted"
 
 def showInventory(plid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -189,7 +189,7 @@ def showInventory(plid):
 	return message
 
 def showTradeInventory(plid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -203,9 +203,9 @@ def showTradeInventory(plid):
 	return msg
 
 def sendMoney(plid, fid, count):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
-	if not isExist(fid):
+	if not ut.isExist(fid):
 		return "User is not found"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -225,13 +225,13 @@ def sendMoney(plid, fid, count):
 	return "Your money were successfully sent to the player"
 
 def sendGift(plid, fid, itemNumber, message):
-	if not isExist(fid):
+	if not ut.isExist(fid):
 		return "User is not found"
-	if not inFriends(plid, fid):
+	if not ut.inFriends(plid, fid):
 		return "User isn't in your friend list"
-	if not inInventory(plid, itemNumber):
+	if not ut.inInventory(plid, itemNumber):
 		return "Item is not found"
-	if inTrade(plid, itemNumber):
+	if ut.inTrade(plid, itemNumber):
 		return "This item is already in trade"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -313,8 +313,8 @@ def showShopList(plid):
 	c = data.cursor()
 	c.execute("SELECT * FROM inventory")
 	if c.fetchone() is None:
-		if ev.refillMerchant is False:
-			if random.randint() <= 50:
+		if ev.refillMerchant(plid) is False:
+			if random.randint(1, 100) <= 50:
 				return ev.removeMerchant(plid)
 			else:
 				return "Merchant doesn't have any items now. Check him later"
@@ -329,9 +329,9 @@ def showShopList(plid):
 	return msg
 
 def itemDesc(plid, itemNumber):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "User is not found"
-	if not inInventory(plid, itemNumber):
+	if not ut.inInventory(plid, itemNumber):
 		return "Item is not found"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -381,7 +381,7 @@ def sellItem(plid, itemNumber):
 		return "Here's no merchant on this square"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
-	if not inInventory(plid, itemNumber):
+	if not ut.inInventory(plid, itemNumber):
 		return "Wrong item number"
 	c.execute("SELECT * FROM inventory WHERE number=?", [itemNumber])
 	item = c.fetchone()
@@ -446,27 +446,27 @@ def actions(plid):
 				if ch.attrib['x'] == str(x) and ch.attrib['y'] == str(y):
 					acts.append(f"Open -- You can open the {ch.attrib['type'][6:]} Chest")
 
-	if inTradeZone(plid):
+	if ut.inTradeZone(plid):
 		acts.append(">You're in the trade zone. Note that.")
 
 	acts.sort()
 	return "\n".join(acts)
 
-def putUpForAuc(plid, itemNumber, price):
-	if not inInventory(plid, itemNumber):
+def putUpForAuc(plid, itemNumber, price): # in dev.
+	if not ut.inInventory(plid, itemNumber):
 		return "Wrong item number"
-	if not inTradeZone(plid):
+	if not ut.inTradeZone(plid):
 		return "You must be in trade zone to put the item up"
-	if inTrade(plid, itemNumber):
+	if ut.inTrade(plid, itemNumber):
 		return "This item is already in some trade"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
 	c.execute("UPDATE inventory SET inTrade=1 WHERE number=?", [itemNumber])
 
 def removeFriend(plid, fid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
-	if not isExist(fid) and str(fid) != "???":
+	if not ut.isExist(fid) and str(fid) != "???":
 		return "User is not found"
 	data = sqlite3.connect(os.path.join("pl", f"{plid}.db"))
 	c = data.cursor()
@@ -493,7 +493,7 @@ def removeFriend(plid, fid):
 		return "Please, use \"/denyrequest\" to cancel or deny friend request."
 
 def denyFriendRequest(plid, fid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
 	c = data.cursor()
@@ -527,7 +527,7 @@ def denyFriendRequest(plid, fid):
 		return "Request already accepted."
 
 def friendList(plid):
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	data = sqlite3.connect(os.path.join('pl', f"{plid}.db"))
 	c = data.cursor()
@@ -561,7 +561,7 @@ def friendList(plid):
 	return message
 
 def searchByID(id):
-	if not isExist(id):
+	if not ut.isExist(id):
 		return "User is not found"
 	data = sqlite3.connect("lop.db")
 	c = data.cursor()
@@ -578,11 +578,10 @@ def playersOnTile(plid):
 	y = int(pos[1])
 	tileplayers = []
 	
-	for i in root.findall('objectgroup'):
-		if i.attrib['name'] == "Players":
-			for players in i:
-				if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
-					tileplayers.append(players.attrib['name'])
+	for i in root.findall('objectgroup[@name="Players"]'):
+		for players in i:
+			if int(players.attrib['x']) == x and int(players.attrib['y']) == y:
+				tileplayers.append(players.attrib['name'])
 	
 	if not tileplayers:
 		return "There's no players on tile"
@@ -605,14 +604,12 @@ def playerToMap(plid):
 	pos = getCoords(plid)
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
-	for i in root.findall('objectgroup'):
-		if i.attrib['name'] == 'Players':
-			ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'type': 'Player', 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
-	for i in root.findall('objectgroup'):
-		if i.attrib['name'] == 'Players':
-			for p in i:
-				if p.attrib['name'] == str(plid):
-					ET.SubElement(p, 'ellipse')
+	for i in root.findall('objectgroup[@name="Players"]'):
+		ET.SubElement(i, 'object', {'id': str(plid), 'name': str(plid), 'type': 'Player', 'x': str(pos[0]), 'y': str(pos[1]), 'width': '1', 'height': '1'})
+	for i in root.findall('objectgroup[@name="Players"]'):
+		for p in i:
+			if p.attrib['name'] == str(plid):
+				ET.SubElement(p, 'ellipse')
 	tree.write('session.tmx', 'UTF-8')
 
 def mapLeave(plid):
@@ -624,28 +621,26 @@ def mapLeave(plid):
 	c.execute("UPDATE player SET x_pos={}, y_pos={}".format(position[0], position[1]))
 	data.commit()
 	data.close()
-	for objects in root.findall('objectgroup'):
-		if objects.attrib['name'] == "Players":
-			for x in objects:
-				if x.attrib['name'] == str(plid):
-					objects.remove(x)
-					tree.write('session.tmx', 'UTF-8')
+	for objects in root.findall('objectgroup[@name="Players"]'):
+		for x in objects:
+			if x.attrib['name'] == str(plid):
+				objects.remove(x)
+				tree.write('session.tmx', 'UTF-8')
 
 def getCoords(plid):
 	"""
 		Returns X and Y position for player (tuple)
 	"""
-	if not isExist(plid):
+	if not ut.isExist(plid):
 		return "Register first"
 	tree = ET.parse("session.tmx")
 	root = tree.getroot()
-	for i in root.findall("objectgroup"):
-		if i.attrib["name"] == "Players":
-			for pos in i:
-				if pos.attrib["name"] == str(plid):
-					x = pos.attrib['x']
-					y = pos.attrib['y']
-					return x, y
+	for i in root.findall("objectgroup[@name=\"Players\"]"):
+		for pos in i:
+			if pos.attrib["name"] == str(plid):
+				x = pos.attrib['x']
+				y = pos.attrib['y']
+				return x, y
 	st = stats(plid)
 	return st.x_pos, st.y_pos	
 
