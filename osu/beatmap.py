@@ -3,11 +3,11 @@ import sys, traceback
 
 
 class Beatmap:
-	def __init__(self, file):
-		self.searchfile = file
+	def __init__(self, f):
+		self.searchfile = f
 		self.main()
+	
 	def main(self):
-
 		## Setting init beatmap values
 		# Metadata
 		self.title = None
@@ -46,7 +46,7 @@ class Beatmap:
 		self.objects = []
 		ho_num = 0
 		class hit_object:
-			def __init__(self,pos,time,h_type,end_time,slider):
+			def __init__(self, pos, time, h_type, end_time, slider):
 				self.pos = pos
 				self.time = time
 				self.h_type = h_type
@@ -58,7 +58,7 @@ class Beatmap:
 		self.timing_points = []
 		tp_num = 0
 		class timing_point:
-			def __init__(self,time,ms_per_beat,inherit):
+			def __init__(self, time, ms_per_beat, inherit):
 				self.time = time
 				self.ms_per_beat = ms_per_beat
 				self.inherit = inherit
@@ -105,10 +105,10 @@ class Beatmap:
 				#print "TR: "+str(self.tick_rate)
 
 		# Parse the tp object
-		def tp_ptr(self,line):
+		def tp_ptr(self, line):
 			temp_tp = line.split("\r")[0].split("\n")[0].split(",")
 			
-			if temp_tp[0] != '':
+			if temp_tp[0]:
 				if len(temp_tp) < 3:
 					self.timing_points.append(timing_point(temp_tp[0],temp_tp[1],0))
 				else:
@@ -116,14 +116,14 @@ class Beatmap:
 				#print timing_points[tp_num].ms_per_beat
 
 		# Parse the HO. This may take a while
-		def ho_ptr(self,line):
+		def ho_ptr(self, line):
 			# Start to global stuff. Need to learn more about this
 			# Split commas for each line which should be a hit object
 			temp_tp = line.split("\r")[0].split("\n")[0].split(",")
 			# Only if the line is not null do something
-			if temp_tp[0] != '':
+			if temp_tp[0]:
 				# Set variables to send to hit object
-				pos = [temp_tp[0],temp_tp[1]]
+				pos = [temp_tp[0], temp_tp[1]]
 				time = temp_tp[2]
 				h_type = temp_tp[3]
 				end_time = 0
@@ -196,11 +196,11 @@ class Beatmap:
 
 
 				#Spinner type.
-				elif h_type == "8" or h_type == "12":
+				elif h_type in ["8", "12"]:
 					self.num_spinners += 1
 					h_type = 3
 				else:
-					print("HELP "+h_type)
+					print("HELP " + h_type)
 				self.num_objects += 1
 				self.max_combo += 1
 				self.objects.append(hit_object(pos,time,h_type,end_time,slider))
@@ -224,19 +224,19 @@ class Beatmap:
 					valid = False
 				# Section for timing points
 				if tp_sec:
-					tp_ptr(self,line)
+					tp_ptr(self, line)
 					tp_num += 1
 				if "[TimingPoints]" in line:
 					tp_sec = True
 				if tp_sec and (line == "\n" or line == "\r\n" or line == ""):
 					tp_sec = False
-			if valid != True:
-				print("ERROR: Unsupported gamemode")
-				raise()
+			if not valid:
+				raise Exception("Unsupported gamemode")
 		except Exception as e:
-			print("ERROR: Processing beatmap failed", e)
+			print("ERROR: Processing beatmap failed:", e)
 			sys.exit(1)
-	def apply_mods(self,mods):
+
+	def apply_mods(self, mods):
 		# Ugly shouldput somewhere else
 		od0_ms = 79.5
 		od10_ms = 19.5
@@ -292,8 +292,8 @@ class Beatmap:
 		if mods.ez:
 			cs_multipier = 0.5
 
-		odms = min(od0_ms, max(od10_ms,odms))
-		arms = min(ar0_ms,max(ar10_ms,arms))
+		odms = min(od0_ms, max(od10_ms, odms))
+		arms = min(ar0_ms,max(ar10_ms, arms))
 
 		odms /= speed
 		arms /= speed
@@ -302,18 +302,16 @@ class Beatmap:
 
 		self.ar = ((ar0_ms - arms) / ar_ms_step1) if self.ar<= 5.0 else (5.0 + (ar5_ms - arms) / ar_ms_step2)
 		self.cs *= cs_multipier
-		self.cs = max(0.0,min(10.0,self.cs))
+		self.cs = max(0.0, min(10.0, self.cs))
 
 		if mods.speed_changing == 0:
 			return
 
 		for tp in self.timing_points:
 			tp.time = float(tp.time)
-			if int(tp.inherit) == 0:
+			if not int(tp.inherit):
 				tp.ms_per_beat = float(tp.ms_per_beat)
-
 
 		for obj in self.objects:
 			obj.time = float(obj.time)
 			obj.end_time = obj.end_time
-

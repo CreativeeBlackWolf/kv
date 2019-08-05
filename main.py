@@ -16,13 +16,13 @@ import commands as com
 ingame = []
 
 comhelp = {
-	'help': 'show the help message for command/to see commands list // ~help or "~" [command or page number (2)]',
-	'osuhelp': 'show the help message for osu-like commands // ~osuhelp or "o!" [command]',
+	'help': 'show the help message for command/to see commands list // ~help | ~ [command or page number (2)]',
+	'osuhelp': 'show the help message for osu-like commands // ~osuhelp | o! | o!help [command]',
 	'pingS': 'u can\'t write "~ping"?',
 	'ping': 'just ping the bot // ~ping',
-	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi or ~ruleofinternet + (number/"random")',
-	'gamehelp': 'help for ingame commands // ~gamehelp or "!" [command or page number(2, 3)]',
-	'socialhelp': 'help for social commands // ~socialhelp or "/" [command]',
+	'ruleofinternet': 'check the interesting rule (ex. 34) // ~rofi | ~ruleofinternet (number/"random")',
+	'gamehelp': 'help for ingame commands // ~gamehelp | ! | !help [command or page number(2, 3)]',
+	'socialhelp': 'help for social commands // ~socialhelp | "/" | "/help" [command]',
 	'loli': 'catch the random loli // ~loli',
 	'upload': 'upload the picture to bot\'s drive // ~uploadone (photo attachment)',
 	'uploadmany': 'upload the pictureS to bot\'s drive // ~uploadone (photo attachmentS)'
@@ -238,7 +238,8 @@ def main():
 												combo=stats['combo'],
 												amods=stats['mods'],
 												uid=uid,
-												messageid=message)
+												messageid=message,
+												t=token)
 									else:
 										map = "Beatmap status should be Ranked (or use -oppai)"
 								if type(map) == dict:
@@ -268,7 +269,7 @@ PP: """
 						else:
 							vk.messages.send(random_id=0, user_id=uid, message=osuhelp["pp"])
 
-					if event.text.startswith("o!recent"):
+					if event.text.split()[0] in ["o!r", "o!recent"]:
 						if len(event.text.split()) == 1:
 							d = osc.recentScore()
 							if d[1]:
@@ -288,13 +289,13 @@ PP: """
 						if len(event.text.split()) == 3:
 							vk.messages.send(random_id=0, user_id=uid, message=osuhelp["recent"])
 
-					if event.text.split()[0] == "o!change":
+					if event.text.split()[0] in ["o!change", "o!c"]:
 						if len(event.text.split()) == 2:
 							vk.messages.send(random_id=0, user_id=uid, message=osucommands.change(uid, event.text.split()[1]))
 						else:
 							vk.messages.send(random_id=0, user_id=uid, message=osuhelp["change"])
 
-					if event.text.startswith("o!register"):
+					if event.text.split()[0] in ["o!reg", "o!register"]:
 						if len(event.text.split()) == 2:
 							vk.messages.send(random_id=0, user_id=uid, message=osucommands.register(uid, event.text.split()[1]))
 						else:
@@ -687,7 +688,7 @@ A ranks: {user["A"]}
 							else:
 								vk.messages.send(random_id=0, user_id=uid, message='Никого в сессии нет, еблан')
 
-					if event.text.startswith('~help') or event.text.split()[0] == "~":
+					if event.text.split()[0] in ["~", "~help"]:
 						if len(event.text.split()) == 1:
 							msg = f"""These commands have the prefix "~":
 help: {comhelp['help']}
@@ -721,7 +722,7 @@ uploadone: {comhelp['upload']}
 							else:
 								vk.messages.send(random_id=0, user_id=uid, message="Command is not found. Try ~help")
 
-					if event.text.startswith("~gamehelp") or event.text.split()[0] == "!":
+					if event.text.split()[0] in ["!", "~gamehelp", "!help"]:
 						if len(event.text.split()) == 1:
 							msg = f"""These commands have the prefix "!"
 
@@ -773,7 +774,7 @@ tileplayers: {gamehelp['tileplayers']}
 							else:
 								vk.messages.send(random_id=0, user_id=uid, message="Command is not found. Try ~gamehelp")
 
-					if event.text.startswith("~socialhelp") or event.text.split()[0] == "/":
+					if event.text.split()[0] in ["/", "~socialhelp", "/help"]:
 						if len(event.text.split()) == 1:
 							msg = f"""These commands have the prefix "/"
 chat: {sochelp['chat']}
@@ -798,7 +799,8 @@ sendgift: {sochelp['sendgift']}
 								vk.messages.send(random_id=0, user_id=uid, message=sochelp[event.text.split()[1]])
 							else:
 								vk.messages.send(random_id=0, user_id=uid, message="Command is not found. Try ~socialhelp")
-					if event.text.startswith("~osuhelp") or event.text.split()[0] == "o!":
+
+					if event.text.split()[0] in ["o!", "~osuhelp", "o!help"]:
 						if len(event.text.split()) == 1:	
 							msg = f"""These commands have the prefix "o!"
 pp: {osuhelp["pp"]}

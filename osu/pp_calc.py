@@ -6,7 +6,7 @@ except ModuleNotFoundError:
 
 class mods:
 	def __init__(self):
-		self.nomod = 1,
+		self.nomod = 1
 		self.nf = 0
 		self.ez = 0
 		self.hd = 0
@@ -165,7 +165,7 @@ def pp_calc_acc(aim, speed, b, acc_percent, used_mods = mods(), combo = 0xFFFF, 
 
 	if c100 > b.num_objects - misses:
 		c100 = 0
-		c50 = round(-6.0 * ((acc_percent * 0.01 - 1.0) * b.num_objects + misses) * 0.2);
+		c50 = round(-6.0 * ((acc_percent * 0.01 - 1.0) * b.num_objects + misses) * 0.2)
 
 		c50 = min(max300, c50)
 	else:

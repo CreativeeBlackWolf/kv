@@ -1,13 +1,13 @@
 import urllib.request, urllib.error
 import vk_api
 import time
-from lxml import html
 import json
 import requests
 import sys
 import os
 import shutil
 import zipfile
+from lxml import html
 
 try:
 	from beatmap import Beatmap
@@ -18,8 +18,8 @@ except ModuleNotFoundError:
 	import osu.pp_calc as pp_calc
 	import osu.diff_calc as diff_calc
 
-def calcMap(beatmap = None, c50 = 0, c100 = 0, amods = None, combo = 0, acc = 0.0, sv = 1, misses = 0, uid = 0, messageid = 0):
-	vk_session = vk_api.VkApi(token="4bb471bf7c3adfe32a22376273a64db2e5fe3e9481bafa093494d79739a4fd988ebca1d7fa8f648afc87b")
+def calcMap(t = None, beatmap = None, c50 = 0, c100 = 0, amods = None, combo = 0, acc = 0.0, sv = 1, misses = 0, uid = 0, messageid = 0):
+	vk_session = vk_api.VkApi(token=t)
 	vk = vk_session.get_api()
 
 	if not beatmap.startswith("https://"):
@@ -351,4 +351,4 @@ def reporthook(blocknum, blocksize, totalsize):
 		sys.stderr.write("read %d\n" % (readsofar,))
 
 if __name__ == "__main__":
-	print(calcMap("https://osu.ppy.sh/beatmapsets/664636#osu/1406645", acc=95))
+	pass
